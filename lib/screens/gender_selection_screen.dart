@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'age_selection_screen.dart';
+import '../main.dart';
+import 'connect_health_screen.dart';
+import 'user_details_screen.dart';
 
 class GenderSelectionScreen extends StatefulWidget {
   const GenderSelectionScreen({super.key});
@@ -12,51 +14,93 @@ class GenderSelectionScreen extends StatefulWidget {
 class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
   String? _selectedGender;
 
-  final List<Map<String, String>> genderOptions = [
-    {'text': 'I identify as non-binary.', 'emoji': '🌈'},
-    {'text': 'I identify as female.', 'emoji': '👩'},
-    {'text': 'I identify as male.', 'emoji': '👨'},
-    {'text': 'I\'d rather not answer.', 'emoji': '🤐'},
+  final List<Map<String, dynamic>> genderOptions = [
+    {
+      'text': 'Female',
+      'icon': Icons.female_rounded,
+      'description': 'I identify as female',
+    },
+    {
+      'text': 'Male',
+      'icon': Icons.male_rounded,
+      'description': 'I identify as male',
+    },
+    {
+      'text': 'Non-binary',
+      'icon': Icons.transgender_rounded,
+      'description': 'I identify as non-binary',
+    },
+    {
+      'text': 'Prefer not to say',
+      'icon': Icons.not_interested_rounded,
+      'description': 'I\'d rather not answer',
+    },
   ];
 
   bool get canContinue => _selectedGender != null;
 
   @override
   Widget build(BuildContext context) {
-    const phoneWidth = 393.0;
-    const phoneHeight = 852.0;
-
-    Widget mainContent = Container(
-      width: phoneWidth,
-      height: phoneHeight,
-      color: const Color(0xFF4A67FF),
-      child: SafeArea(
+    Widget mainContent = Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          color: AppColors.textBlack,
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      body: SafeArea(
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'What gender\nbest describes you?',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                    decoration: BoxDecoration(
                       color: Colors.white,
-                      letterSpacing: -0.5,
-                      height: 1.2,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.lightBlue,
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.shade100.withOpacity(0.2),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'How do you\nidentify yourself?',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.deepBlue,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Select the option that best describes you',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: AppColors.textGrey,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -76,55 +120,76 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
                       },
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(15),
                           border: Border.all(
                             color: isSelected 
-                                ? const Color(0xFF4A67FF)
-                                : Colors.transparent,
+                                ? AppColors.primaryBlue
+                                : AppColors.lightBlue,
                             width: 2,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blue.shade100.withOpacity(0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
                         child: Row(
                           children: [
-                            Text(
-                              gender['emoji']!,
-                              style: const TextStyle(
-                                fontSize: 24,
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppColors.primaryBlue.withOpacity(0.1)
+                                    : Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                gender['icon'],
+                                size: 28,
+                                color: isSelected
+                                    ? AppColors.primaryBlue
+                                    : AppColors.textGrey,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 16),
                             Expanded(
-                              child: Text(
-                                gender['text']!,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.black87,
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    gender['text'],
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: AppColors.textBlack,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    gender['description'],
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: AppColors.textGrey,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             if (isSelected)
                               Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF4A67FF).withOpacity(0.1),
+                                  color: AppColors.primaryBlue.withOpacity(0.1),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.check,
-                                  color: Color(0xFF4A67FF),
+                                  color: AppColors.primaryBlue,
                                   size: 20,
                                 ),
                               ),
@@ -136,36 +201,61 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
                 ),
               ),
             ),
-            Padding(
+            Container(
               padding: const EdgeInsets.all(24),
-              child: ElevatedButton(
-                onPressed: canContinue
-                    ? () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AgeSelectionScreen(),
-                          ),
-                        );
-                      }
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF4A67FF),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(
+                    color: AppColors.lightBlue,
+                    width: 2,
                   ),
-                  disabledBackgroundColor: Colors.white.withOpacity(0.5),
                 ),
-                child: const SizedBox(
-                  width: double.infinity,
+              ),
+              child: Container(
+                width: double.infinity,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30),
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primaryBlue,
+                      AppColors.primaryBlue.withBlue(255),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryBlue.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: canContinue
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ConnectHealthScreen(),
+                            ),
+                          );
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    disabledBackgroundColor: Colors.transparent,
+                  ),
                   child: Text(
                     'Continue',
-                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.w600,
+                      color: canContinue ? Colors.white : Colors.white.withOpacity(0.5),
                     ),
                   ),
                 ),
@@ -177,6 +267,9 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
     );
 
     if (kIsWeb) {
+      const phoneWidth = 393.0;
+      const phoneHeight = 852.0;
+
       return Scaffold(
         backgroundColor: Colors.black,
         body: Center(
@@ -203,9 +296,6 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF4A67FF),
-      body: mainContent,
-    );
+    return mainContent;
   }
 } 

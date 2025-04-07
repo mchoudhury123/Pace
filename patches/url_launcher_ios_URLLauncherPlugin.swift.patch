@@ -1,0 +1,26 @@
+--- URLLauncherPlugin.swift.orig	2023-01-01 00:00:00
++++ URLLauncherPlugin.swift	2023-01-01 00:00:00
+@@ -35,7 +35,11 @@
+ 
+   private func openSimpleURL(_ url: String, result: @escaping FlutterResult) {
+     let url = NSURL(string: url)!
++    #if !EXTENSION
+     let application = UIApplication.shared
++    #else
++    let application = nil
++    #endif
+     let options = [UIApplication.OpenExternalURLOptionsKey.universalLinksOnly: NSNumber(value: false)]
+     application.open(url as URL, options: options) { (success) in
+       result(NSNumber(value: success))
+@@ -44,7 +48,11 @@
+ 
+   private func canLaunchURL(_ url: String, result: @escaping FlutterResult) {
+     let url = NSURL(string: url)!
++    #if !EXTENSION
+     let application = UIApplication.shared
++    #else
++    let application = nil
++    #endif
+     result(NSNumber(value: application.canOpenURL(url as URL)))
+   }
+ }

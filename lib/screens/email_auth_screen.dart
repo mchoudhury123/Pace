@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart';
+import 'user_details_screen.dart';
 
 class EmailAuthScreen extends StatefulWidget {
   const EmailAuthScreen({super.key});
@@ -29,18 +30,18 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
       try {
         if (_isSignUp) {
           // Create new account
-          final userCredential = await _auth.createUserWithEmailAndPassword(
+          await _auth.createUserWithEmailAndPassword(
             email: _emailController.text.trim(),
             password: _passwordController.text,
           );
-          print('User created: ${userCredential.user?.email}');
+          print('User created: ${_auth.currentUser?.email}');
         } else {
           // Sign in to existing account
-          final userCredential = await _auth.signInWithEmailAndPassword(
+          await _auth.signInWithEmailAndPassword(
             email: _emailController.text.trim(),
             password: _passwordController.text,
           );
-          print('User signed in: ${userCredential.user?.email}');
+          print('User signed in: ${_auth.currentUser?.email}');
         }
 
         if (mounted) {
@@ -52,7 +53,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
           );
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => const HomeScreen(),
+              builder: (context) => _isSignUp ? const UserDetailsScreen() : const HomeScreen(),
             ),
           );
         }

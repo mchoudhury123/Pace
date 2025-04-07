@@ -5,6 +5,16 @@ import 'firebase_options.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/otp_verification_screen.dart';
 
+// Define app colors
+class AppColors {
+  static const Color primaryBlue = Color(0xFF60C0FF); // Lighter blue from image
+  static const Color deepBlue = Color(0xFF4A98F7); // Deeper blue from image
+  static const Color white = Colors.white;
+  static const Color lightBlue = Color(0xFFDCF1FF); // Very light blue for backgrounds
+  static const Color textBlack = Color(0xFF000000);
+  static const Color textGrey = Color(0xFF757575);
+}
+
 void main() async {
   print('Starting app initialization...');
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +31,7 @@ void main() async {
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
     ),
   );
   print('System UI style set');
@@ -51,22 +61,70 @@ class MyApp extends StatelessWidget {
       title: 'FundRacer',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4A67FF)),
+        // Use the blue and white color scheme from the onboarding screen
+        primaryColor: AppColors.deepBlue,
+        scaffoldBackgroundColor: AppColors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.primaryBlue,
+          foregroundColor: AppColors.white,
+          elevation: 0,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
+          centerTitle: true,
+        ),
+        // Add Bottom Navigation Bar Theme
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          backgroundColor: AppColors.primaryBlue,
+          selectedItemColor: AppColors.white,
+          unselectedItemColor: AppColors.white.withOpacity(0.6),
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.normal,
+            fontSize: 12,
+          ),
+          type: BottomNavigationBarType.fixed,
+          elevation: 8,
+          showSelectedLabels: true,
+          showUnselectedLabels: true,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryBlue,
+            foregroundColor: AppColors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            elevation: 0,
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.deepBlue,
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppColors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.deepBlue),
+          ),
+        ),
+        // For components that use ColorScheme
+        colorScheme: ColorScheme.light(
+          primary: AppColors.deepBlue,
+          onPrimary: AppColors.white,
+          secondary: AppColors.primaryBlue,
+          onSecondary: AppColors.white,
+          surface: AppColors.white,
+          background: AppColors.lightBlue,
+        ),
         useMaterial3: true,
       ),
       home: const OnboardingScreen(),

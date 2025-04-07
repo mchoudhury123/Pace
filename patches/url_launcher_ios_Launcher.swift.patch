@@ -1,0 +1,13 @@
+--- Launcher.swift.orig	2023-01-01 00:00:00
++++ Launcher.swift	2023-01-01 00:00:00
+@@ -11,7 +11,11 @@
+   /// - Parameters:
+   ///   - url: The URL to open.
+   func launchURL(_ url: NSURL) -> Bool {
++    #if !EXTENSION
+     return UIApplication.shared.openURL(url as URL)
++    #else
++    return false
++    #endif
+   }
+ }

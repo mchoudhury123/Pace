@@ -1,284 +1,476 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/strava_service.dart';
+import '../main.dart';
+import './onboarding_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const phoneWidth = 393.0;
-    const phoneHeight = 852.0;
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
 
-    Widget mainContent = Container(
-      width: phoneWidth,
-      height: phoneHeight,
-      color: Colors.white,
-      child: SafeArea(
-        child: Column(
-          children: [
-            // App Bar
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const Expanded(
-                    child: Text(
-                      'Profile',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      // TODO: Implement edit functionality
-                    },
-                    child: const Text(
-                      'Edit',
-                      style: TextStyle(
-                        color: Colors.black54,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ],
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isStravaConnected = false;
+  bool _isConnecting = false;
+  late StravaService _stravaService;
+  String _displayName = 'User';
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeServices();
+    _loadUserData();
+  }
+
+  Future<void> _initializeServices() async {
+    final prefs = await SharedPreferences.getInstance();
+    _stravaService = StravaService(prefs);
+    await _checkStravaConnection();
+  }
+
+  Future<void> _checkStravaConnection() async {
+    final isAuthenticated = await _stravaService.isAuthenticated;
+    setState(() {
+      _isStravaConnected = isAuthenticated;
+    });
+  }
+
+  Future<void> _connectStrava() async {
+    setState(() {
+      _isConnecting = true;
+    });
+    
+    try {
+      await _stravaService.authenticate();
+      await _checkStravaConnection();
+    } catch (e) {
+      print('Error connecting to Strava: $e');
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Error'),
+            content: const Text('Failed to connect to Strava. Please try again.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
               ),
+            ],
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isConnecting = false;
+      });
+    }
+  }
+
+  Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // Reload user data to ensure we have the latest
+      await user.reload();
+      final updatedUser = FirebaseAuth.instance.currentUser;
+      if (updatedUser?.displayName != null && mounted) {
+        setState(() {
+          _displayName = updatedUser!.displayName!;
+        });
+      }
+    }
+  }
+
+  Widget _buildProfileButton({
+    required String text,
+    required IconData icon,
+    required VoidCallback onTap,
+    Color? iconColor,
+    bool showBadge = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade200),
+              borderRadius: BorderRadius.circular(12),
             ),
-            // Profile Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                children: [
-                  Stack(
-                    alignment: Alignment.bottomRight,
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (iconColor ?? AppColors.primaryBlue).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: iconColor ?? AppColors.primaryBlue,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    text,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textBlack,
+                    ),
+                  ),
+                ),
+                if (showBadge)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'New',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                if (!showBadge)
+                  Icon(
+                    Icons.chevron_right,
+                    color: Colors.grey.shade400,
+                    size: 24,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBadge(Color color) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: color,
+          width: 2,
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.star,
+          color: color,
+          size: 16,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          color: AppColors.textBlack,
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Profile',
+          style: TextStyle(
+            color: AppColors.textBlack,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadUserData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              children: [
+                // Profile Header Section
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade100),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 4,
+                      // Profile Picture
+                      Stack(
+                        children: [
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 3,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: FirebaseAuth.instance.currentUser?.photoURL != null
+                                ? Image.network(
+                                    FirebaseAuth.instance.currentUser!.photoURL!,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          Colors.grey.shade300,
+                                          Colors.grey.shade200,
+                                        ],
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Icon(
+                                        Icons.person,
+                                        size: 60,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ),
+                            ),
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 8,
-                              spreadRadius: 2,
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryBlue,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 24),
+                      // User Info and Badges
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _displayName,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textBlack,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            // Progress Section
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      '42.5 km',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primaryBlue,
+                                      ),
+                                    ),
+                                    Text(
+                                      ' total distance',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: AppColors.textGrey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                // Progress Bar
+                                Stack(
+                                  children: [
+                                    Container(
+                                      height: 6,
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                    ),
+                                    Container(
+                                      height: 6,
+                                      width: 150, // This would be dynamic based on progress
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryBlue,
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '7.5 km to next level',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textGrey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            // Badges
+                            Row(
+                              children: [
+                                _buildBadge(Colors.blue),
+                                const SizedBox(width: 8),
+                                _buildBadge(Colors.green),
+                                const SizedBox(width: 8),
+                                _buildBadge(Colors.orange),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '+3 more',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textGrey,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
-                        ),
-                        child: ClipOval(
-                          child: Image.network(
-                            FirebaseAuth.instance.currentUser?.photoURL ?? 
-                            'https://via.placeholder.com/120',
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.black,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: 20,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    FirebaseAuth.instance.currentUser?.displayName ?? 'User',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    FirebaseAuth.instance.currentUser?.email ?? '',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.black54,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Stats Section
-            Container(
-              margin: const EdgeInsets.all(24.0),
-              padding: const EdgeInsets.symmetric(vertical: 24.0),
-              decoration: BoxDecoration(
-                color: Colors.grey[900],
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text(
-                          '13.18',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'TOTAL MILES',
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 40,
-                    color: Colors.grey[700],
-                  ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text(
-                          '10',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'TOTAL SESSIONS',
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // History Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'History',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () {
-                      // TODO: Implement daily view toggle
+                ),
+                const SizedBox(height: 24),
+                
+                // Buttons Section
+                _buildProfileButton(
+                  text: _isStravaConnected ? 'Connected to Strava' : 'Connect to Strava',
+                  icon: Icons.directions_run,
+                  iconColor: const Color(0xFFFC4C02),
+                  onTap: _isConnecting ? () {} : _connectStrava,
+                ),
+                _buildProfileButton(
+                  text: 'Edit Profile',
+                  icon: Icons.edit,
+                  onTap: () {
+                    // Handle edit profile
+                  },
+                ),
+                _buildProfileButton(
+                  text: 'Settings',
+                  icon: Icons.settings,
+                  onTap: () {
+                    // Handle settings
+                  },
+                ),
+                _buildProfileButton(
+                  text: 'Notifications',
+                  icon: Icons.notifications,
+                  showBadge: true,
+                  onTap: () {
+                    // Handle notifications
+                  },
+                ),
+                _buildProfileButton(
+                  text: 'Privacy Center',
+                  icon: Icons.security,
+                  onTap: () {
+                    // Handle privacy
+                  },
+                ),
+                _buildProfileButton(
+                  text: 'Help',
+                  icon: Icons.help,
+                  onTap: () {
+                    // Handle help
+                  },
+                ),
+                const SizedBox(height: 20),
+                
+                // Logout Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await FirebaseAuth.instance.signOut();
+                      if (mounted) {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+                          (route) => false,
+                        );
+                      }
                     },
-                    icon: const Text(
-                      'Daily',
-                      style: TextStyle(
-                        color: Colors.black87,
-                        fontSize: 16,
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Log Out'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade50,
+                      foregroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    label: const Icon(
-                      Icons.keyboard_arrow_down,
-                      color: Colors.black87,
-                    ),
                   ),
-                ],
-              ),
-            ),
-            // Graph Section
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: CustomPaint(
-                  size: const Size(double.infinity, 200),
-                  painter: BarChartPainter(),
-                ),
-              ),
-            ),
-            // Activity Section
-            Container(
-              padding: const EdgeInsets.all(24.0),
-              alignment: Alignment.centerLeft,
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Activity',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  ActivityItem(
-                    miles: 1.62,
-                    date: '03/01/2025',
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (kIsWeb) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: Container(
-            width: phoneWidth,
-            height: phoneHeight,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(40),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 20,
-                  spreadRadius: 5,
                 ),
               ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(40),
-              child: mainContent,
-            ),
           ),
         ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: mainContent,
+      ),
     );
   }
 }

@@ -1,0 +1,134 @@
+// This is a fixed version of OIDExternalUserAgentIOSCustomBrowser.m
+// with app extension-compatible code
+
+#import "OIDExternalUserAgentIOSCustomBrowser.h"
+
+#if TARGET_OS_IOS || TARGET_OS_MACCATALYST
+
+#import <UIKit/UIKit.h>
+
+@implementation OIDExternalUserAgentIOSCustomBrowser
+
+// Helper method to safely get sharedApplication in app extension environment
+- (UIApplication *)checkExtensionContextAndReturnSharedApplication {
+    if ([NSBundle.mainBundle.bundlePath hasSuffix:@".appex"]) {
+        // App Extensions cannot use UIApplication.sharedApplication
+        return nil;
+    }
+    
+    // Regular app can use UIApplication.sharedApplication
+    return UIApplication.sharedApplication;
+}
+
+// Helper method to safely check canOpenURL in app extension environment
+- (BOOL)checkIfCanOpenURL:(NSURL *)url {
+    if ([NSBundle.mainBundle.bundlePath hasSuffix:@".appex"]) {
+        // App Extensions cannot check canOpenURL
+        return NO;
+    }
+    
+    // Regular app can use canOpenURL
+    return [[UIApplication sharedApplication] canOpenURL:url];
+}
+
+// Helper method to safely open URLs in app extension environment
+- (BOOL)openURLIfPossible:(NSURL *)url {
+    if ([NSBundle.mainBundle.bundlePath hasSuffix:@".appex"]) {
+        // App Extensions cannot open URLs
+        return NO;
+    }
+    
+    // Regular app can open URLs
+    [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
+    return YES;
+}
+
++ (nullable instancetype)customBrowserSafari {
+  // Safari
+  return [[OIDExternalUserAgentIOSCustomBrowser alloc]
+      initWithURLScheme:@"https"
+                   host:nil
+                   path:nil];
+}
+
++ (nullable instancetype)customBrowserChrome {
+  return [[OIDExternalUserAgentIOSCustomBrowser alloc]
+      initWithURLScheme:@"googlechromes"
+                   host:nil
+                   path:nil];
+}
+
++ (nullable instancetype)customBrowserFirefox {
+  return [[OIDExternalUserAgentIOSCustomBrowser alloc]
+      initWithURLScheme:@"firefox"
+                   host:nil
+                   path:nil];
+}
+
++ (nullable instancetype)customBrowserOpera {
+  return [[OIDExternalUserAgentIOSCustomBrowser alloc]
+      initWithURLScheme:@"opera-http"
+                   host:nil
+                   path:nil];
+}
+
+- (nullable instancetype)initWithURLScheme:(NSString *)URLScheme
+                                      host:(nullable NSString *)host
+                                      path:(nullable NSString *)path {
+  self = [super init];
+  if (self) {
+    _URLScheme = [URLScheme copy];
+    _host = [host copy];
+    _path = [path copy];
+  }
+  return self;
+}
+
+- (BOOL)presentExternalUserAgentRequest:(nonnull id<OIDExternalUserAgentRequest>)request
+                                session:(nonnull id<OIDExternalUserAgentSession>)session {
+  NSURL *requestURL = [request externalUserAgentRequestURL];
+
+  NSURL *URLToOpen = [[NSURL alloc] initWithScheme:_URLScheme
+                                              host:_host
+                                              path:_path ? _path : @""
+                                    encodedFragment:nil];
+  NSURLComponents *URLComponents = [NSURLComponents componentsWithURL:URLToOpen
+                                              resolvingAgainstBaseURL:NO];
+
+  NSString *queryItems = requestURL.query;
+  if (requestURL.fragment) {
+    queryItems = queryItems ? [NSString stringWithFormat:@"%@&%@", queryItems, requestURL.fragment] : requestURL.fragment;
+  }
+
+  NSString *query = [NSString stringWithFormat:@"url=%@",
+                                               [[requestURL absoluteString] stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]]];
+  queryItems = queryItems ? [NSString stringWithFormat:@"%@&%@", query, queryItems] : query;
+
+  URLComponents.query = queryItems;
+  URLToOpen = URLComponents.URL;
+
+  BOOL canOpenURLs = [self checkIfCanOpenURL:URLToOpen];
+  if (!canOpenURLs) {
+    return NO;
+  }
+
+  _externalUserAgentFlowInProgress = YES;
+  _session = session;
+  [self openURLIfPossible:URLToOpen];
+  return YES;
+}
+
+- (void)dismissExternalUserAgentAnimated:(BOOL)animated completion:(nonnull void (^)(void))completion {
+  if (!_externalUserAgentFlowInProgress) {
+    // Flow already ended
+    completion();
+    return;
+  }
+  _externalUserAgentFlowInProgress = NO;
+  _session = nil;
+  completion();
+}
+
+@end
+
+#endif // TARGET_OS_IOS || TARGET_OS_MACCATALYST 

@@ -3,15 +3,12 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'charity_partners_screen.dart';
+import 'profile_photo_screen.dart';
+import '../main.dart';  // Import for AppColors
+import 'connect_health_screen.dart';
 
 class NotificationPermissionScreen extends StatefulWidget {
-  final String healthAppName;
-
-  const NotificationPermissionScreen({
-    super.key,
-    required this.healthAppName,
-  });
+  const NotificationPermissionScreen({super.key});
 
   @override
   State<NotificationPermissionScreen> createState() => _NotificationPermissionScreenState();
@@ -30,37 +27,21 @@ class _NotificationPermissionScreenState extends State<NotificationPermissionScr
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         if (enabled) {
-          // Request notification permission if user wants notifications
           final status = await Permission.notification.request();
           if (status.isDenied) {
             throw Exception('Notification permission denied');
           }
         }
 
-        // Save preference to Firestore regardless of permission status
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-          'notificationsEnabled': enabled,
-          'notificationPreferenceSetAt': FieldValue.serverTimestamp(),
-        });
-
-        if (mounted) {
-          setState(() {
-            _statusMessage = enabled 
-                ? 'Notifications enabled successfully!'
-                : 'Preference saved. You can enable notifications later in settings.';
+        // Try to save to Firestore but don't block navigation on failure
+        try {
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+            'notificationsEnabled': enabled,
+            'notificationPreferenceSetAt': FieldValue.serverTimestamp(),
           });
+        } catch (e) {
+          debugPrint('Failed to save notification preference: $e');
         }
-
-        // TODO: Navigate to the next screen after a brief delay
-        // await Future.delayed(const Duration(seconds: 2));
-        // if (mounted) {
-        //   Navigator.pushReplacement(
-        //     context,
-        //     MaterialPageRoute(
-        //       builder: (context) => const NextScreen(),
-        //     ),
-        //   );
-        // }
       }
     } catch (e) {
       setState(() {
@@ -71,94 +52,121 @@ class _NotificationPermissionScreenState extends State<NotificationPermissionScr
         setState(() {
           _isLoading = false;
         });
+        
+        // Always navigate to ProfilePhotoScreen after user interaction
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ProfilePhotoScreen(),
+          ),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    const phoneWidth = 393.0;
-    const phoneHeight = 852.0;
-
-    Widget mainContent = Container(
-      width: phoneWidth,
-      height: phoneHeight,
-      color: const Color(0xFF4A67FF),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+    Widget mainContent = Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          color: AppColors.textBlack,
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              Colors.blue.shade50,
+            ],
+          ),
+        ),
+        child: SafeArea(
           child: Column(
             children: [
-              const SizedBox(height: 100),
-              const Text(
-                'Congratulations\nare ready to\nmake a difference',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Your ${widget.healthAppName} is connected.\n\nWould you like us to send reminders to log into FundRacer so you can log your miles?',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 50),
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.notifications_active,
-                      size: 48,
-                      color: Color(0xFF4A67FF),
-                    ),
-                    const SizedBox(height: 24),
-                    if (_statusMessage.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: Text(
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.notifications_active_outlined,
+                        size: 80,
+                        color: AppColors.primaryBlue,
+                      ),
+                      const SizedBox(height: 40),
+                      Text(
+                        'Never Miss a Run',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.deepBlue,
+                          height: 1.2,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Allow notifications so you never miss a chance to turn your runs into donations',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppColors.textGrey,
+                          height: 1.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (_statusMessage.isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        Text(
                           _statusMessage,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: _statusMessage.contains('successfully')
                                 ? Colors.green
-                                : _statusMessage.contains('Failed')
-                                    ? Colors.red
-                                    : Colors.black87,
+                                : Colors.red,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppColors.lightBlue,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
+                ),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : () => _saveNotificationPreference(true),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4A67FF),
+                          backgroundColor: AppColors.primaryBlue,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(30),
                           ),
+                          elevation: 0,
                         ),
                         child: _isLoading
                             ? const SizedBox(
@@ -170,69 +178,35 @@ class _NotificationPermissionScreenState extends State<NotificationPermissionScr
                                 ),
                               )
                             : const Text(
-                                'Yes, Enable Notifications',
+                                'Enable Notifications',
                                 style: TextStyle(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: TextButton(
                         onPressed: _isLoading ? null : () => _saveNotificationPreference(false),
                         style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF4A67FF),
+                          foregroundColor: AppColors.primaryBlue,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(30),
                           ),
                         ),
                         child: const Text(
-                          'No, Maybe Later',
+                          'Maybe Later',
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                     ),
-                    if (_statusMessage.isNotEmpty)
-                      Column(
-                        children: [
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 56,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const CharityPartnersScreen(),
-                                  ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF4A67FF),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Text(
-                                'Continue',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                   ],
                 ),
               ),
@@ -243,6 +217,9 @@ class _NotificationPermissionScreenState extends State<NotificationPermissionScr
     );
 
     if (kIsWeb) {
+      const phoneWidth = 393.0;
+      const phoneHeight = 852.0;
+
       return Scaffold(
         backgroundColor: Colors.black,
         body: Center(
@@ -269,9 +246,6 @@ class _NotificationPermissionScreenState extends State<NotificationPermissionScr
       );
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF4A67FF),
-      body: mainContent,
-    );
+    return mainContent;
   }
 } 

@@ -1,0 +1,26 @@
+--- PhonePermissionStrategy.m.orig	2023-01-01 00:00:00
++++ PhonePermissionStrategy.m	2023-01-01 00:00:00
+@@ -18,7 +18,11 @@
+ - (PermissionStatus)checkPermissionStatus:(PermissionGroup)permission {
+   
+   #if TARGET_OS_SIMULATOR
++    #if !EXTENSION
+     if (![[UIApplication sharedApplication] canOpenURL:[NSURL URLWithString:@"tel://"]]) {
++    #else
++    if (false) {
++    #endif
+       return PermissionStatusDenied;
+     }
+     
+@@ -46,7 +50,11 @@
+     CTTelephonyNetworkInfo *netInfo = [[CTTelephonyNetworkInfo alloc] init];
+     CTCarrier *carrier = [netInfo subscriberCellularProvider];
+     
++    #if !EXTENSION
+     if (![[UIApplication sharedApplication] canOpenURL:[NSURL URLWithString:@"tel://"]]) {
++    #else
++    if (false) {
++    #endif
+       return PermissionStatusDenied;
+     }
+     

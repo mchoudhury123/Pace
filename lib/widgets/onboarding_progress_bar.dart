@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../main.dart';
 
 class OnboardingProgressBar extends StatelessWidget {
   final int currentStep;
@@ -18,8 +19,8 @@ class OnboardingProgressBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         child: LinearProgressIndicator(
           value: currentStep / totalSteps,
-          backgroundColor: Colors.white.withOpacity(0.2),
-          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+          backgroundColor: AppColors.lightBlue,
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
           minHeight: 4,
         ),
       ),

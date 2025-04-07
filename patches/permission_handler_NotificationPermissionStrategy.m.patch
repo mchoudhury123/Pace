@@ -1,0 +1,14 @@
+--- NotificationPermissionStrategy.m.orig	2023-01-01 00:00:00
++++ NotificationPermissionStrategy.m	2023-01-01 00:00:00
+@@ -89,7 +89,11 @@
+     [[NSNotificationCenter defaultCenter] removeObserver:self];
+   }
+   
++  #if !EXTENSION
+   [[UIApplication sharedApplication] registerUserNotificationSettings:settings];
++  #else
++  // Cannot register notification settings in app extension
++  #endif
+ }
+ 
+ - (void)requestPermissions:(PermissionGroup)permission completionHandler:(PermissionStatusHandler)completionHandler {
