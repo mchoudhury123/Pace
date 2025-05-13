@@ -5,6 +5,11 @@ import '../widgets/screen_layout.dart';
 import 'dart:async';  // Add Timer import
 import 'email_auth_screen.dart';  // Add import for EmailAuthScreen
 import '../main.dart';  // Import for AppColors
+import '../services/auth_service.dart';  // Add AuthService import
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'user_details_screen.dart';
+import 'home_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -17,6 +22,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   Timer? _timer;
+  final AuthService _authService = AuthService();  // Add AuthService instance
 
   final List<Map<String, String>> _slides = [
     {
@@ -92,8 +98,46 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  void _handleAltSignIn() {
-    // TODO: Implement alternative sign in
+  void _handleAltSignIn(String provider) async {
+    try {
+      UserCredential? userCredential;
+      
+      if (provider == 'google') {
+        userCredential = await _authService.signInWithGoogle();
+      } else if (provider == 'apple') {
+        userCredential = await _authService.signInWithApple();
+      }
+
+      if (userCredential != null && mounted) {
+        // Check if user profile exists in Firestore
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .get();
+
+        if (mounted) {
+          if (userDoc.exists) {
+            // User has completed profile setup, go to home screen
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+            );
+          } else {
+            // New user, go to user details screen
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const UserDetailsScreen()),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to sign in: $e')),
+        );
+      }
+    }
   }
 
   void _handleTermsClick() {
@@ -110,92 +154,104 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final padding = MediaQuery.of(context).padding;
     
     return Scaffold(
+      backgroundColor: AppColors.lightBlue, // Set scaffold background to match container
       body: SafeArea(
+        bottom: false, // Don't apply safe area to bottom
         child: SingleChildScrollView(
           child: SizedBox(
-            height: size.height - padding.top - padding.bottom,
+            height: size.height - padding.top, // Remove bottom padding from height calculation
             child: Column(
               children: [
                 SizedBox(height: padding.top > 20 ? 20 : 0),
                 Expanded(
                   flex: 3,
-                  child: PageView.builder(
-                    controller: _pageController,
-                    physics: const BouncingScrollPhysics(),
-                    onPageChanged: (int page) {
-                      setState(() {
-                        _currentPage = page;
-                      });
-                      // Reset timer when page is manually changed
-                      _startTimer();
-                    },
-                    itemCount: _slides.length,
-                    itemBuilder: (context, index) {
-                      return GestureDetector(
-                        onTapDown: (_) {
-                          _timer?.cancel();  // Pause timer when user taps
-                        },
-                        onTapUp: (_) {
-                          _startTimer();  // Resume timer when user releases
-                        },
-                        child: Container(
-                          width: size.width,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                _slides[index]['title']!,
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  height: 1.2,
-                                  color: AppColors.deepBlue,
+                  child: Container(
+                    color: AppColors.white, // Add white background to top section
+                    child: PageView.builder(
+                      controller: _pageController,
+                      physics: const BouncingScrollPhysics(),
+                      onPageChanged: (int page) {
+                        setState(() {
+                          _currentPage = page;
+                        });
+                        // Reset timer when page is manually changed
+                        _startTimer();
+                      },
+                      itemCount: _slides.length,
+                      itemBuilder: (context, index) {
+                        return GestureDetector(
+                          onTapDown: (_) {
+                            _timer?.cancel();  // Pause timer when user taps
+                          },
+                          onTapUp: (_) {
+                            _startTimer();  // Resume timer when user releases
+                          },
+                          child: Container(
+                            width: size.width,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _slides[index]['title']!,
+                                  style: TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1.2,
+                                    color: AppColors.deepBlue,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                height: size.height * 0.22,
-                                child: Image.asset(
-                                  _slides[index]['image']!,
-                                  fit: BoxFit.contain,
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  height: size.height * 0.22,
+                                  child: Image.asset(
+                                    _slides[index]['image']!,
+                                    fit: BoxFit.contain,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                _slides[index]['subtitle']!,
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.textGrey,
+                                Text(
+                                  _slides[index]['subtitle']!,
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textGrey,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                // Page indicator dots
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    _slides.length,
-                    (index) => Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _currentPage == index
-                            ? AppColors.primaryBlue
-                            : AppColors.primaryBlue.withOpacity(0.3),
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                Container(
+                  color: AppColors.white,
+                  child: Column(
+                    children: [
+                      // Page indicator dots
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          _slides.length,
+                          (index) => Container(
+                            width: 8,
+                            height: 8,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _currentPage == index
+                                  ? AppColors.primaryBlue
+                                  : AppColors.primaryBlue.withOpacity(0.3),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
                 Container(
                   width: size.width,
                   decoration: BoxDecoration(
@@ -206,7 +262,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                   ),
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).padding.bottom + 16),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -257,9 +313,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            _buildSocialIconButton(Icons.apple),
-                            _buildSocialIconButton(Icons.facebook),
-                            _buildSocialIconButton(Icons.g_mobiledata, size: 40),
+                            _buildSocialIconButton(
+                              icon: Icons.apple,
+                              isImage: false,
+                              onTap: () => _handleAltSignIn('apple'),
+                              iconColor: Colors.black,
+                              backgroundColor: Colors.white,
+                              size: 28,
+                            ),
+                            _buildSocialIconButton(
+                              imagePath: 'assets/images/google_logo.png',
+                              isImage: true,
+                              onTap: () => _handleAltSignIn('google'),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 20),
@@ -298,37 +364,40 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        RichText(
-                          textAlign: TextAlign.center,
-                          text: TextSpan(
-                            text: 'By continuing, you agree to our ',
-                            style: TextStyle(
-                              color: AppColors.textGrey,
-                              fontSize: 12,
+                        Padding(
+                          padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+                          child: RichText(
+                            textAlign: TextAlign.center,
+                            text: TextSpan(
+                              text: 'By continuing, you agree to our ',
+                              style: TextStyle(
+                                color: AppColors.textGrey,
+                                fontSize: 12,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: 'Terms of Service',
+                                  style: TextStyle(
+                                    color: AppColors.primaryBlue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = _handleTermsClick,
+                                ),
+                                const TextSpan(
+                                  text: ' and ',
+                                ),
+                                TextSpan(
+                                  text: 'Privacy Policy',
+                                  style: TextStyle(
+                                    color: AppColors.primaryBlue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = _handlePrivacyClick,
+                                ),
+                              ],
                             ),
-                            children: [
-                              TextSpan(
-                                text: 'Terms of Service',
-                                style: TextStyle(
-                                  color: AppColors.primaryBlue,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                recognizer: TapGestureRecognizer()
-                                  ..onTap = _handleTermsClick,
-                              ),
-                              const TextSpan(
-                                text: ' and ',
-                              ),
-                              TextSpan(
-                                text: 'Privacy Policy',
-                                style: TextStyle(
-                                  color: AppColors.primaryBlue,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                recognizer: TapGestureRecognizer()
-                                  ..onTap = _handlePrivacyClick,
-                              ),
-                            ],
                           ),
                         ),
                       ],
@@ -343,13 +412,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildSocialIconButton(IconData icon, {double size = 30}) {
+  Widget _buildSocialIconButton({
+    IconData? icon,
+    String? imagePath,
+    bool isImage = false,
+    double size = 30,
+    VoidCallback? onTap,
+    Color? iconColor,
+    Color? backgroundColor,
+  }) {
     return Container(
       width: 60,
       height: 60,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: AppColors.white,
+        color: backgroundColor ?? AppColors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -361,13 +438,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: _handleAltSignIn,
+          onTap: onTap,
           borderRadius: BorderRadius.circular(30),
-          child: Icon(
-            icon,
-            size: size,
-            color: AppColors.primaryBlue,
-          ),
+          child: isImage
+              ? Padding(
+                  padding: const EdgeInsets.all(15.0),
+                  child: Image.asset(
+                    imagePath!,
+                    width: size,
+                    height: size,
+                  ),
+                )
+              : Icon(
+                  icon,
+                  size: size,
+                  color: iconColor ?? AppColors.primaryBlue,
+                ),
         ),
       ),
     );

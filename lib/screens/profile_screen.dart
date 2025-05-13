@@ -5,6 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/strava_service.dart';
 import '../main.dart';
 import './onboarding_screen.dart';
+import './edit_profile_screen.dart';
+import './settings_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,12 +20,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isStravaConnected = false;
   bool _isConnecting = false;
   late StravaService _stravaService;
+  bool _isLoading = false;
+  String? _photoUrl;
   String _displayName = 'User';
 
   @override
   void initState() {
     super.initState();
     _initializeServices();
+    _initializeUserData();
     _loadUserData();
   }
 
@@ -45,10 +51,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
     
     try {
-      await _stravaService.authenticate();
-      await _checkStravaConnection();
+      final authResult = await _stravaService.authenticate();
+      
+      if (!mounted) return;
+      
+      // Handle different authentication results
+      switch (authResult) {
+        case StravaAuthResult.success:
+          debugPrint('Successfully connected to Strava from profile');
+          await _checkStravaConnection();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Successfully connected to Strava'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          break;
+          
+        case StravaAuthResult.cancelled:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Strava connection was cancelled'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          break;
+          
+        case StravaAuthResult.networkError:
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Network Error'),
+              content: const Text('Please check your internet connection and try again.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          break;
+          
+        case StravaAuthResult.timeout:
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Connection Timeout'),
+              content: const Text('The connection to Strava timed out. Please try again later.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          break;
+          
+        case StravaAuthResult.failed:
+        default:
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Connection Failed'),
+              content: const Text('Failed to connect to Strava. Please try again.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          break;
+      }
     } catch (e) {
-      print('Error connecting to Strava: $e');
+      debugPrint('Error connecting to Strava: $e');
       if (mounted) {
         showDialog(
           context: context,
@@ -65,9 +144,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
     } finally {
-      setState(() {
-        _isConnecting = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isConnecting = false;
+        });
+      }
     }
   }
 
@@ -77,86 +158,113 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Reload user data to ensure we have the latest
       await user.reload();
       final updatedUser = FirebaseAuth.instance.currentUser;
-      if (updatedUser?.displayName != null && mounted) {
+      if (updatedUser != null && mounted) {
         setState(() {
-          _displayName = updatedUser!.displayName!;
+          _displayName = updatedUser.displayName ?? 'User';
+          _photoUrl = updatedUser.photoURL;
         });
       }
+    }
+  }
+
+  Future<void> _initializeUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      setState(() {
+        _displayName = user.displayName ?? 'User';
+        _photoUrl = user.photoURL;
+      });
     }
   }
 
   Widget _buildProfileButton({
     required String text,
     required IconData icon,
+    required Color iconColor,
     required VoidCallback onTap,
-    Color? iconColor,
-    bool showBadge = false,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: onTap,
+    if (text.contains('Strava')) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade200),
-              borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: (iconColor ?? AppColors.primaryBlue).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: iconColor ?? AppColors.primaryBlue,
-                    size: 20,
-                  ),
+          ],
+        ),
+        child: Column(
+          children: [
+            if (!_isStravaConnected)
+              GestureDetector(
+                onTap: onTap,
+                child: Image.asset(
+                  'assets/images/btn_strava_connect_with_orange_x2.png',
+                  height: 48,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    text,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textBlack,
-                    ),
+              )
+            else
+              Column(
+                children: [
+                  Image.asset(
+                    'assets/images/api_logo_pwrdBy_strava_stack_orange.png',
+                    height: 24,
                   ),
-                ),
-                if (showBadge)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'New',
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () async {
+                      final Uri stravaUrl = Uri.parse('https://www.strava.com/dashboard');
+                      if (await canLaunchUrl(stravaUrl)) {
+                        await launchUrl(stravaUrl, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    child: Text(
+                      'View on Strava',
                       style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFFC5200),
+                        decoration: TextDecoration.underline,
                       ),
                     ),
                   ),
-                if (!showBadge)
-                  Icon(
-                    Icons.chevron_right,
-                    color: Colors.grey.shade400,
-                    size: 24,
-                  ),
-              ],
-            ),
+                ],
+              ),
+          ],
+        ),
+      );
+    }
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListTile(
+        onTap: onTap,
+        leading: Icon(icon, color: iconColor),
+        title: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
           ),
         ),
+        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
       ),
     );
   }
@@ -179,6 +287,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: color,
           size: 16,
         ),
+      ),
+    );
+  }
+
+  Widget _buildProfileImage() {
+    return Container(
+      width: 100,
+      height: 100,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white,
+          width: 3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: _photoUrl != null
+            ? Image.network(
+                _photoUrl!,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                          : null,
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) => Icon(
+                  Icons.person,
+                  size: 50,
+                  color: AppColors.primaryBlue,
+                ),
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                ),
+                child: Icon(
+                  Icons.person,
+                  size: 50,
+                  color: AppColors.primaryBlue,
+                ),
+              ),
       ),
     );
   }
@@ -211,7 +373,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.all(20.0),
             child: Column(
               children: [
-                // Profile Header Section
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -222,76 +383,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Profile Picture
-                      Stack(
-                        children: [
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 3,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 8,
-                                  spreadRadius: 2,
-                                ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: FirebaseAuth.instance.currentUser?.photoURL != null
-                                ? Image.network(
-                                    FirebaseAuth.instance.currentUser!.photoURL!,
-                                    fit: BoxFit.cover,
-                                  )
-                                : Container(
-                                    width: 100,
-                                    height: 100,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: [
-                                          Colors.grey.shade300,
-                                          Colors.grey.shade200,
-                                        ],
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: Icon(
-                                        Icons.person,
-                                        size: 60,
-                                        color: Colors.grey.shade500,
-                                      ),
-                                    ),
-                                  ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryBlue,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.camera_alt,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 24),
-                      // User Info and Badges
+                      _buildProfileImage(),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,21 +498,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildProfileButton(
                   text: 'Edit Profile',
                   icon: Icons.edit,
-                  onTap: () {
-                    // Handle edit profile
+                  iconColor: AppColors.primaryBlue,
+                  onTap: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EditProfileScreen(),
+                      ),
+                    );
+                    if (result == true) {
+                      // Reload user data if profile was updated
+                      _loadUserData();
+                    }
                   },
                 ),
                 _buildProfileButton(
                   text: 'Settings',
                   icon: Icons.settings,
+                  iconColor: AppColors.primaryBlue,
                   onTap: () {
-                    // Handle settings
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
+                    );
                   },
                 ),
                 _buildProfileButton(
                   text: 'Notifications',
                   icon: Icons.notifications,
-                  showBadge: true,
+                  iconColor: AppColors.primaryBlue,
                   onTap: () {
                     // Handle notifications
                   },
@@ -427,6 +536,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildProfileButton(
                   text: 'Privacy Center',
                   icon: Icons.security,
+                  iconColor: AppColors.primaryBlue,
                   onTap: () {
                     // Handle privacy
                   },
@@ -434,6 +544,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildProfileButton(
                   text: 'Help',
                   icon: Icons.help,
+                  iconColor: AppColors.primaryBlue,
                   onTap: () {
                     // Handle help
                   },

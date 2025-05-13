@@ -6,6 +6,7 @@ import 'onboarding_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_calendar_carousel/flutter_calendar_carousel.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserDetailsScreen extends StatefulWidget {
   const UserDetailsScreen({super.key});
@@ -30,217 +31,239 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
+    DateTime tempDate = _selectedDate ?? DateTime.now().subtract(const Duration(days: 16 * 365));
+    
     final DateTime? picked = await showDialog<DateTime>(
       context: context,
       builder: (BuildContext context) {
-        DateTime? selectedDate = _selectedDate ?? DateTime.now().subtract(const Duration(days: 16 * 365));
-        
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlue,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Select Birth Date',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () => Navigator.of(context).pop(),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Select Birth Date',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  height: 400,
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            DropdownButton<int>(
-                              value: selectedDate?.year ?? DateTime.now().year,
-                              items: List.generate(
-                                DateTime.now().year - 1900 + 1,
-                                (index) => DropdownMenuItem(
-                                  value: DateTime.now().year - index,
-                                  child: Text(
-                                    (DateTime.now().year - index).toString(),
-                                    style: TextStyle(
-                                      color: AppColors.textBlack,
-                                      fontSize: 16,
+                    ),
+                    SizedBox(
+                      height: 400,
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: AppColors.primaryBlue),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<int>(
+                                      value: tempDate.year,
+                                      items: List.generate(
+                                        DateTime.now().year - 1900 + 1,
+                                        (index) => DropdownMenuItem(
+                                          value: DateTime.now().year - index,
+                                          child: Text(
+                                            (DateTime.now().year - index).toString(),
+                                            style: TextStyle(
+                                              color: AppColors.textBlack,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      onChanged: (int? year) {
+                                        if (year != null) {
+                                          setDialogState(() {
+                                            tempDate = DateTime(
+                                              year,
+                                              tempDate.month,
+                                              1,
+                                            );
+                                          });
+                                        }
+                                      },
+                                      dropdownColor: Colors.white,
+                                      icon: Icon(Icons.arrow_drop_down, color: AppColors.primaryBlue),
                                     ),
                                   ),
                                 ),
-                              ),
-                              onChanged: (int? year) {
-                                if (year != null) {
-                                  setState(() {
-                                    selectedDate = DateTime(
-                                      year,
-                                      selectedDate?.month ?? DateTime.now().month,
-                                      selectedDate?.day ?? 1,
-                                    );
-                                  });
-                                }
-                              },
-                              dropdownColor: Colors.white,
-                              icon: Icon(Icons.arrow_drop_down, color: AppColors.primaryBlue),
-                              underline: Container(height: 2, color: AppColors.primaryBlue),
-                            ),
-                            const SizedBox(width: 20),
-                            DropdownButton<int>(
-                              value: selectedDate?.month ?? DateTime.now().month,
-                              items: List.generate(
-                                12,
-                                (index) => DropdownMenuItem(
-                                  value: index + 1,
-                                  child: Text(
-                                    DateFormat('MMMM').format(DateTime(2024, index + 1)),
-                                    style: TextStyle(
-                                      color: AppColors.textBlack,
-                                      fontSize: 16,
+                                const SizedBox(width: 20),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: AppColors.primaryBlue),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<int>(
+                                      value: tempDate.month,
+                                      items: List.generate(
+                                        12,
+                                        (index) => DropdownMenuItem(
+                                          value: index + 1,
+                                          child: Text(
+                                            DateFormat('MMMM').format(DateTime(2024, index + 1)),
+                                            style: TextStyle(
+                                              color: AppColors.textBlack,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      onChanged: (int? month) {
+                                        if (month != null) {
+                                          setDialogState(() {
+                                            tempDate = DateTime(
+                                              tempDate.year,
+                                              month,
+                                              1,
+                                            );
+                                          });
+                                        }
+                                      },
+                                      dropdownColor: Colors.white,
+                                      icon: Icon(Icons.arrow_drop_down, color: AppColors.primaryBlue),
                                     ),
                                   ),
                                 ),
-                              ),
-                              onChanged: (int? month) {
-                                if (month != null) {
-                                  setState(() {
-                                    selectedDate = DateTime(
-                                      selectedDate?.year ?? DateTime.now().year,
-                                      month,
-                                      selectedDate?.day ?? 1,
-                                    );
-                                  });
-                                }
-                              },
-                              dropdownColor: Colors.white,
-                              icon: Icon(Icons.arrow_drop_down, color: AppColors.primaryBlue),
-                              underline: Container(height: 2, color: AppColors.primaryBlue),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                          Expanded(
+                            child: CalendarCarousel(
+                              onDayPressed: (DateTime date, _) {
+                                setDialogState(() {
+                                  tempDate = date;
+                                });
+                                Navigator.of(context).pop(date);
+                              },
+                              thisMonthDayBorderColor: Colors.grey,
+                              weekFormat: false,
+                              height: 340,
+                              selectedDateTime: tempDate,
+                              targetDateTime: tempDate,
+                              customGridViewPhysics: const NeverScrollableScrollPhysics(),
+                              markedDateCustomShapeBorder: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              markedDateCustomTextStyle: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              selectedDayButtonColor: AppColors.primaryBlue,
+                              selectedDayTextStyle: const TextStyle(color: Colors.white),
+                              todayButtonColor: Colors.transparent,
+                              todayTextStyle: TextStyle(color: AppColors.primaryBlue),
+                              minSelectedDate: DateTime(1900),
+                              maxSelectedDate: DateTime.now(),
+                              headerTextStyle: TextStyle(
+                                color: AppColors.deepBlue,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              iconColor: AppColors.primaryBlue,
+                              weekdayTextStyle: TextStyle(
+                                color: AppColors.textGrey,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              daysTextStyle: TextStyle(
+                                color: AppColors.textBlack,
+                              ),
+                              weekendTextStyle: TextStyle(
+                                color: AppColors.primaryBlue.withOpacity(0.7),
+                              ),
+                              showHeaderButton: false,
+                            ),
+                          ),
+                        ],
                       ),
-                      Expanded(
-                        child: CalendarCarousel(
-                          onDayPressed: (DateTime date, _) {
-                            selectedDate = date;
-                            Navigator.of(context).pop(date);
-                          },
-                          thisMonthDayBorderColor: Colors.grey,
-                          weekFormat: false,
-                          height: 340,
-                          selectedDateTime: selectedDate,
-                          targetDateTime: selectedDate,
-                          customGridViewPhysics: const NeverScrollableScrollPhysics(),
-                          markedDateCustomShapeBorder: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: AppColors.textGrey,
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
-                          markedDateCustomTextStyle: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(tempDate),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryBlue,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                            ),
+                            child: const Text(
+                              'Select',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                          selectedDayButtonColor: AppColors.primaryBlue,
-                          selectedDayTextStyle: const TextStyle(color: Colors.white),
-                          todayButtonColor: Colors.transparent,
-                          todayTextStyle: TextStyle(color: AppColors.primaryBlue),
-                          minSelectedDate: DateTime(1900),
-                          maxSelectedDate: DateTime.now(),
-                          headerTextStyle: TextStyle(
-                            color: AppColors.deepBlue,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          iconColor: AppColors.primaryBlue,
-                          weekdayTextStyle: TextStyle(
-                            color: AppColors.textGrey,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          daysTextStyle: TextStyle(
-                            color: AppColors.textBlack,
-                          ),
-                          weekendTextStyle: TextStyle(
-                            color: AppColors.primaryBlue.withOpacity(0.7),
-                          ),
-                          showHeaderButton: false, // Hide default header
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(
-                            color: AppColors.textGrey,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(selectedDate),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryBlue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                        ),
-                        child: const Text(
-                          'Select',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -283,6 +306,16 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
         if (user != null) {
           // Update display name
           await user.updateDisplayName('${_firstNameController.text} ${_lastNameController.text}');
+
+          // Create user document in Firestore
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+            'firstName': _firstNameController.text,
+            'lastName': _lastNameController.text,
+            'dateOfBirth': _selectedDate!.toIso8601String(),
+            'email': user.email,
+            'createdAt': FieldValue.serverTimestamp(),
+            'lastUpdated': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
         }
 
         if (mounted) {

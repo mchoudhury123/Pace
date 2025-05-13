@@ -1,6 +1,6 @@
 {
-    "name": "fundracer_app",
-    "short_name": "fundracer_app",
+    "name": "FundRacer",
+    "short_name": "FundRacer",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

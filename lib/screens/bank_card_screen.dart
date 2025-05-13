@@ -6,7 +6,18 @@ import '../widgets/onboarding_progress_bar.dart';
 import 'gender_selection_screen.dart';
 
 class BankCardScreen extends StatefulWidget {
-  const BankCardScreen({super.key});
+  final String? initialCardNumber;
+  final String? initialCardholderName;
+  final String? initialExpiry;
+  final bool isEditing;
+
+  const BankCardScreen({
+    super.key,
+    this.initialCardNumber,
+    this.initialCardholderName,
+    this.initialExpiry,
+    this.isEditing = false,
+  });
 
   @override
   State<BankCardScreen> createState() => _BankCardScreenState();
@@ -38,6 +49,26 @@ class _BankCardScreenState extends State<BankCardScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // Initialize controllers with existing card data if editing
+    if (widget.isEditing) {
+      if (widget.initialCardNumber != null) {
+        _cardNumberController.text = widget.initialCardNumber!;
+        _cardNumber = widget.initialCardNumber!;
+        _cardType = _getCardTypeFromNumber(_cardNumber);
+      }
+      
+      if (widget.initialCardholderName != null) {
+        _nameController.text = widget.initialCardholderName!;
+        _cardHolderName = widget.initialCardholderName!;
+      }
+      
+      if (widget.initialExpiry != null) {
+        _expiryController.text = widget.initialExpiry!;
+        _expiryDate = widget.initialExpiry!;
+      }
+    }
+
     _cardNumberController.addListener(_onCardNumberChange);
     _expiryController.addListener(_onExpiryChange);
     _cvvController.addListener(_onCvvChange);
@@ -285,10 +316,10 @@ class _BankCardScreenState extends State<BankCardScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  const Text(
-                    'Add Your\nCard Details',
+                  Text(
+                    widget.isEditing ? 'Edit Your\nCard Details' : 'Add Your\nCard Details',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
@@ -455,47 +486,62 @@ class _BankCardScreenState extends State<BankCardScreen> {
                                 width: double.infinity,
                                 height: 56,
                                 child: ElevatedButton(
-                                  onPressed: _isLoading
-                                      ? null
-                                      : () async {
-                                          if (_formKey.currentState!.validate()) {
-                                            setState(() {
-                                              _isLoading = true;
-                                            });
-                                            await Future.delayed(const Duration(seconds: 2));
-                                            if (mounted) {
-                                              Navigator.pushReplacement(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) => const GenderSelectionScreen(),
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        },
+                                  onPressed: _isLoading ? null : () async {
+                                    if (_formKey.currentState!.validate()) {
+                                      setState(() {
+                                        _isLoading = true;
+                                      });
+                                      
+                                      try {
+                                        // Here you would typically make an API call to update the card
+                                        // For now, we'll just simulate a delay
+                                        await Future.delayed(const Duration(seconds: 1));
+                                        
+                                        if (!mounted) return;
+                                        
+                                        // Return true to indicate successful edit
+                                        Navigator.pop(context, true);
+                                      } catch (e) {
+                                        if (!mounted) return;
+                                        
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Error: ${e.toString()}'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      } finally {
+                                        if (mounted) {
+                                          setState(() {
+                                            _isLoading = false;
+                                          });
+                                        }
+                                      }
+                                    }
+                                  },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF4A67FF),
-                                    foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
                                   child: _isLoading
-                                      ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                          ),
-                                        )
-                                      : const Text(
-                                          'Save Card',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
                                         ),
+                                      )
+                                    : Text(
+                                        widget.isEditing ? 'Save Changes' : 'Add Card',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                 ),
                               ),
                               const SizedBox(

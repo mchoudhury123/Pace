@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Fundracer App</string>
+	<string>FundRacer</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>fundracer_app</string>
+	<string>FundRacer</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -49,9 +49,64 @@
 	<string>This app needs access to your step count data to track your fitness activities.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>This app needs permission to track your fitness activities.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to your camera to take profile photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photo library to select profile photos.</string>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>health-kit</string>
+		<string>fetch</string>
+		<string>processing</string>
+		<string>remote-notification</string>
 	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.example.fundracerApp.refresh</string>
+		<string>com.example.fundracerApp.processing</string>
+	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSUserNotificationUsageDescription</key>
+	<string>We need to notify you about your runs and when your donations have impact.</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>We need to notify you about your runs and when your donations have impact.</string>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.example.fundracerApp</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>fundracer</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.877846903380-llb6cqocdnncjb7n72apk8r7muf7ebpr</string>
+			</array>
+		</dict>
+	</array>
+	<key>GIDClientID</key>
+	<string>877846903380-llb6cqocdnncjb7n72apk8r7muf7ebpr.apps.googleusercontent.com</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>http</string>
+		<string>strava</string>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>SignInWithAppleAuthenticationCallback</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER).signin-with-apple</string>
 </dict>
 </plist>

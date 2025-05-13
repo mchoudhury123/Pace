@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../main.dart';
 import 'connect_health_screen.dart';
 import 'user_details_screen.dart';
+import 'country_selection_screen.dart';
 
 class GenderSelectionScreen extends StatefulWidget {
   const GenderSelectionScreen({super.key});
@@ -237,7 +238,7 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const ConnectHealthScreen(),
+                              builder: (context) => const CountrySelectionScreen(),
                             ),
                           );
                         }

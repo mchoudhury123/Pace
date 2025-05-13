@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart';
 import 'forgot_password_screen.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   String? _errorMessage;
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -213,6 +215,74 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: Color(0xFF4A67FF),
                         ),
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: const BorderSide(color: Colors.grey),
+                      ),
+                    ),
+                    onPressed: () async {
+                      try {
+                        final userCredential = await _authService.signInWithGoogle();
+                        if (userCredential != null) {
+                          // Navigate to home screen or handle successful login
+                          Navigator.pushReplacementNamed(context, '/home');
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to sign in with Google: $e')),
+                        );
+                      }
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'assets/images/google_logo.png',
+                          height: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        const Text('Sign in with Google'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () async {
+                      try {
+                        final userCredential = await _authService.signInWithApple();
+                        if (userCredential != null) {
+                          // Navigate to home screen or handle successful login
+                          Navigator.pushReplacementNamed(context, '/home');
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to sign in with Apple: $e')),
+                        );
+                      }
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.apple, size: 24),
+                        const SizedBox(width: 12),
+                        const Text('Sign in with Apple'),
+                      ],
                     ),
                   ),
                 ],

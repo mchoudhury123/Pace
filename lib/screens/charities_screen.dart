@@ -1,53 +1,17 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 
 // Use the AppColors class from main.dart
 import '../main.dart';
+import '../providers/currency_provider.dart';
 
 class CharitiesScreen extends StatefulWidget {
   final Function(int) onTabChange;
   final Function(Map<String, dynamic>)? onCharitySelected;
 
-  const CharitiesScreen({
-    super.key,
-    required this.onTabChange,
-    this.onCharitySelected,
-  });
-
-  @override
-  State<CharitiesScreen> createState() => _CharitiesScreenState();
-}
-
-class _CharitiesScreenState extends State<CharitiesScreen> {
-  int? _selectedCharityIndex;
-  final math.Random _random = math.Random();
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  String? _selectedCategory;
-  String? _selectedCountry;
-
-  final List<String> categories = [
-    'Health',
-    'Education',
-    'Environmental',
-    'Humanitarian',
-    'Animal Welfare',
-    'Children',
-    'Arts',
-    'International Aid',
-  ];
-
-  final List<String> countries = [
-    'United States',
-    'United Kingdom',
-    'Canada',
-    'Australia',
-    'Global',
-  ];
-
-  // List of charities with their details
-  final List<Map<String, dynamic>> charities = [
+  static final List<Map<String, dynamic>> charities = [
     {
       'name': 'Save the Children',
       'description': 'Supporting children\'s rights and providing emergency aid',
@@ -149,7 +113,44 @@ class _CharitiesScreenState extends State<CharitiesScreen> {
     },
   ];
 
-  List<Map<String, dynamic>> get filteredCharities => charities
+  const CharitiesScreen({
+    super.key,
+    required this.onTabChange,
+    this.onCharitySelected,
+  });
+
+  @override
+  State<CharitiesScreen> createState() => _CharitiesScreenState();
+}
+
+class _CharitiesScreenState extends State<CharitiesScreen> {
+  int? _selectedCharityIndex;
+  final math.Random _random = math.Random();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String? _selectedCategory;
+  String? _selectedCountry;
+
+  final List<String> categories = [
+    'Health',
+    'Education',
+    'Environmental',
+    'Humanitarian',
+    'Animal Welfare',
+    'Children',
+    'Arts',
+    'International Aid',
+  ];
+
+  final List<String> countries = [
+    'United States',
+    'United Kingdom',
+    'Canada',
+    'Australia',
+    'Global',
+  ];
+
+  List<Map<String, dynamic>> get filteredCharities => CharitiesScreen.charities
       .where((charity) =>
           charity['name']
               .toString()
@@ -201,7 +202,7 @@ class _CharitiesScreenState extends State<CharitiesScreen> {
 
   Future<void> _selectCharity(Map<String, dynamic> charity) async {
     setState(() {
-      _selectedCharityIndex = charities.indexOf(charity);
+      _selectedCharityIndex = CharitiesScreen.charities.indexOf(charity);
     });
     
     final prefs = await SharedPreferences.getInstance();
@@ -244,10 +245,12 @@ class _CharitiesScreenState extends State<CharitiesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currencyProvider = Provider.of<CurrencyProvider>(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select Charity'),
         backgroundColor: AppColors.primaryBlue,
+        automaticallyImplyLeading: false,
       ),
       body: Column(
         children: [
@@ -405,14 +408,14 @@ class _CharitiesScreenState extends State<CharitiesScreen> {
                     itemBuilder: (context, index) {
                       final charity = filteredCharities[index];
                       final progress = charity['raised'] / charity['goal'];
-                      final isSelected = _selectedCharityIndex == charities.indexOf(charity);
+                      final isSelected = _selectedCharityIndex == CharitiesScreen.charities.indexOf(charity);
                       final color = charity['color'] as Color;
                       final icon = charity['icon'] as IconData;
 
                       return GestureDetector(
                         onTap: () {
                           setState(() {
-                            _selectedCharityIndex = charities.indexOf(charity);
+                            _selectedCharityIndex = CharitiesScreen.charities.indexOf(charity);
                           });
                         },
                         child: Card(
@@ -562,15 +565,18 @@ class _CharitiesScreenState extends State<CharitiesScreen> {
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
                                             Text(
-                                              '\$${charity['raised'].toStringAsFixed(0)}',
-                                              style: const TextStyle(
+                                              '${currencyProvider.currencySymbol}${charity['raised'].toStringAsFixed(0)}',
+                                              style: TextStyle(
+                                                fontSize: 24,
                                                 fontWeight: FontWeight.bold,
+                                                color: AppColors.deepBlue,
                                               ),
                                             ),
                                             Text(
-                                              'Goal: \$${charity['goal'].toStringAsFixed(0)}',
+                                              'Goal: ${currencyProvider.currencySymbol}${charity['goal'].toStringAsFixed(0)}',
                                               style: TextStyle(
-                                                color: Colors.grey[600],
+                                                fontSize: 14,
+                                                color: AppColors.textGrey,
                                               ),
                                             ),
                                           ],
@@ -595,7 +601,7 @@ class _CharitiesScreenState extends State<CharitiesScreen> {
               child: ElevatedButton(
                 onPressed: _selectedCharityIndex != null
                     ? () {
-                        final selectedCharity = charities[_selectedCharityIndex!];
+                        final selectedCharity = CharitiesScreen.charities[_selectedCharityIndex!];
                         _showConfirmationDialog(selectedCharity);
                       }
                     : null,

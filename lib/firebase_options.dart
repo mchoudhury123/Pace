@@ -41,11 +41,10 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBIDtAKIfYY5UdXiQ1vpYB1CTgT8HZhJ20',
-    appId: '1:877846903380:ios:YOUR_IOS_APP_ID',
+    appId: '1:877846903380:ios:fbc49f77b71724e633cbc1',
     messagingSenderId: '877846903380',
     projectId: 'fundracer-app',
     storageBucket: 'fundracer-app.appspot.com',
-    iosClientId: 'YOUR_IOS_CLIENT_ID',
-    iosBundleId: 'com.example.fundracer_app',
+    iosBundleId: 'com.example.fundracerApp',
   );
 } 

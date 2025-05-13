@@ -1,14 +1,28 @@
 import 'dart:convert';
+import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+enum StravaAuthResult {
+  success,
+  cancelled,
+  failed,
+  networkError,
+  timeout
+}
 
 class StravaService {
   static const String _clientId = '150848';
   static const String _clientSecret = '72af103d651584b37d751f899ef80d04f646b6e2';
-  static const String _redirectUrl = 'http://localhost:8080';
+  static const String _redirectUrl = 'https://dc67-92-29-210-187.ngrok-free.app/callback';
   static const String _authUrl = 'https://www.strava.com/oauth/authorize';
   static const String _tokenUrl = 'https://www.strava.com/oauth/token';
+  static const String _scope = 'read,activity:read,activity:read_all,profile:read_all';
 
   final SharedPreferences _prefs;
 
@@ -21,56 +35,55 @@ class StravaService {
     return DateTime.now().millisecondsSinceEpoch < expiresAt;
   }
 
-  Future<void> authenticate() async {
+  Future<StravaAuthResult> authenticate() async {
     try {
-      print('Starting Strava authentication...');
-      
       final state = DateTime.now().millisecondsSinceEpoch.toString();
       
-      // Construct the authorization URL with mobile-optimized parameters
       final authorizeUrl = Uri.parse(_authUrl).replace(queryParameters: {
         'client_id': _clientId,
         'redirect_uri': _redirectUrl,
         'response_type': 'code',
-        'scope': 'read,activity:read,activity:read_all',
+        'scope': _scope,
         'approval_prompt': 'auto',
         'state': state,
       });
 
-      print('Authorization URL: ${authorizeUrl.toString()}');
+      debugPrint('Starting Strava authentication...');
+      debugPrint('Authorization URL: ${authorizeUrl.toString()}');
 
-      // Present the authorization page to the user
       final result = await FlutterWebAuth2.authenticate(
         url: authorizeUrl.toString(),
-        callbackUrlScheme: 'http',
+        callbackUrlScheme: 'fundracer',
       );
 
-      print('Received callback URL: $result');
+      debugPrint('Auth result: $result');
 
-      // Extract authorization code from response
+      if (result.isEmpty) {
+        debugPrint('Authentication was cancelled');
+        return StravaAuthResult.cancelled;
+      }
+
       final uri = Uri.parse(result);
       final code = uri.queryParameters['code'];
-      final error = uri.queryParameters['error'];
       final returnedState = uri.queryParameters['state'];
-      
+      final error = uri.queryParameters['error'];
+
       if (error != null) {
-        print('Error received from Strava: $error');
-        throw Exception('Authorization failed: $error');
+        debugPrint('Error received from Strava: $error');
+        return StravaAuthResult.failed;
       }
-      
+
       if (code == null) {
-        print('No authorization code received in callback');
-        throw Exception('No authorization code received');
+        debugPrint('No authorization code received');
+        return StravaAuthResult.failed;
       }
 
       if (returnedState != state) {
-        print('State mismatch. Expected: $state, Got: $returnedState');
-        throw Exception('Invalid state parameter');
+        debugPrint('State mismatch. Expected: $state, Got: $returnedState');
+        return StravaAuthResult.failed;
       }
 
-      print('Exchanging code for token...');
-
-      // Exchange authorization code for access token
+      debugPrint('Exchanging code for token...');
       final tokenResponse = await http.post(
         Uri.parse(_tokenUrl),
         headers: {
@@ -84,13 +97,18 @@ class StravaService {
           'grant_type': 'authorization_code',
           'redirect_uri': _redirectUrl,
         },
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException('Token exchange timed out');
+        },
       );
 
-      print('Token response status: ${tokenResponse.statusCode}');
-      print('Token response body: ${tokenResponse.body}');
+      debugPrint('Token response status: ${tokenResponse.statusCode}');
 
       if (tokenResponse.statusCode != 200) {
-        throw Exception('Failed to get access token: ${tokenResponse.body}');
+        debugPrint('Failed to get access token: ${tokenResponse.body}');
+        return StravaAuthResult.failed;
       }
 
       final tokenData = json.decode(tokenResponse.body);
@@ -98,10 +116,19 @@ class StravaService {
       await _prefs.setInt('strava_expires_at', tokenData['expires_at'] * 1000);
       await _prefs.setString('strava_refresh_token', tokenData['refresh_token']);
       
-      print('Authentication completed successfully');
+      debugPrint('Authentication completed successfully');
+      return StravaAuthResult.success;
+    } on TimeoutException {
+      debugPrint('Strava authentication timed out');
+      return StravaAuthResult.timeout;
     } catch (e) {
-      print('Error during Strava authentication: $e');
-      rethrow;
+      if (e.toString().contains('Connection failed') || 
+          e.toString().contains('SocketException')) {
+        debugPrint('Network error during Strava authentication: $e');
+        return StravaAuthResult.networkError;
+      }
+      debugPrint('Error during Strava authentication: $e');
+      return StravaAuthResult.failed;
     }
   }
 
@@ -141,7 +168,7 @@ class StravaService {
         'ytd_distance': stats['ytd_run_totals']['distance'] ?? 0,
       };
     } catch (e) {
-      print('Error getting athlete stats: $e');
+      debugPrint('Error getting athlete stats: $e');
       rethrow;
     }
   }
@@ -171,7 +198,7 @@ class StravaService {
       final activities = json.decode(response.body) as List;
       return activities.map((activity) => activity as Map<String, dynamic>).toList();
     } catch (e) {
-      print('Error getting recent activities: $e');
+      debugPrint('Error getting recent activities: $e');
       rethrow;
     }
   }

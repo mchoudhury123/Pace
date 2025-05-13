@@ -43,6 +43,11 @@ post_install do |installer|
       # Set the C++ standard to C++17
       config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
       config.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
+      
+      # Disable code signing for development
+      config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ""
+      config.build_settings['CODE_SIGNING_REQUIRED'] = "NO"
+      config.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
     end
     if target.name == 'BoringSSL-GRPC'
       target.source_build_phase.files.each do |file|

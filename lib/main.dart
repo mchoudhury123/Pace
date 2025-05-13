@@ -4,6 +4,18 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/otp_verification_screen.dart';
+import 'package:provider/provider.dart';
+import 'providers/currency_provider.dart';
+import 'providers/metric_provider.dart';
+import 'providers/user_provider.dart';
+import 'services/payment_service.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:io' show Platform;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
+import 'screens/splash_screen.dart';
+import 'package:device_preview/device_preview.dart';
 
 // Define app colors
 class AppColors {
@@ -15,39 +27,86 @@ class AppColors {
   static const Color textGrey = Color(0xFF757575);
 }
 
-void main() async {
-  print('Starting app initialization...');
-  WidgetsFlutterBinding.ensureInitialized();
-  print('Flutter binding initialized');
+// Initialize the notification service
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = 
+    FlutterLocalNotificationsPlugin();
+
+Future<void> initNotifications() async {
+  // Settings for Android
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
   
-  // Set preferred orientations to portrait only
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-  print('Screen orientation set');
-  
-  // Set status bar to transparent
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ),
+  // Settings for iOS - update to remove the deprecated parameter
+  final DarwinInitializationSettings initializationSettingsIOS =
+      DarwinInitializationSettings(
+    requestSoundPermission: false,
+    requestBadgePermission: false,
+    requestAlertPermission: false,
   );
-  print('System UI style set');
   
+  // Initialize settings
+  final InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+    iOS: initializationSettingsIOS,
+  );
+  
+  // Initialize plugin
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) {
+      // Handle notification tap
+    },
+  );
+}
+
+Future<void> _initializeApp() async {
   try {
-    print('Initializing Firebase...');
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print('Firebase initialized successfully');
+
+    if (Platform.isIOS) {
+      // Configure Firebase Messaging for iOS
+      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    }
+
+    // Initialize notifications
+    await initNotifications();
+
+    // Set preferred orientations
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
+    // Set status bar style
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
   } catch (e) {
-    print('Error initializing Firebase: $e');
+    debugPrint('Error during app initialization: $e');
   }
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   
-  print('Running app...');
-  runApp(const MyApp());
+  // Initialize the app
+  await _initializeApp();
+
+  runApp(
+    DevicePreview(
+      enabled: !kReleaseMode && kIsWeb,
+      builder: (context) => const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -57,82 +116,53 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     print('Building MyApp widget');
-    return MaterialApp(
-      title: 'FundRacer',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        // Use the blue and white color scheme from the onboarding screen
-        primaryColor: AppColors.deepBlue,
-        scaffoldBackgroundColor: AppColors.white,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: AppColors.primaryBlue,
-          foregroundColor: AppColors.white,
-          elevation: 0,
-          systemOverlayStyle: SystemUiOverlayStyle.light,
-          centerTitle: true,
-        ),
-        // Add Bottom Navigation Bar Theme
-        bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          backgroundColor: AppColors.primaryBlue,
-          selectedItemColor: AppColors.white,
-          unselectedItemColor: AppColors.white.withOpacity(0.6),
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.normal,
-            fontSize: 12,
-          ),
-          type: BottomNavigationBarType.fixed,
-          elevation: 8,
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryBlue,
-            foregroundColor: AppColors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
+    
+    // Load saved preferences when app starts
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Load currency and metric preferences
+      await Provider.of<CurrencyProvider>(context, listen: false).loadSavedCurrency();
+      await Provider.of<MetricProvider>(context, listen: false).loadSavedMetric();
+      
+      // Load current user data
+      await Provider.of<UserProvider>(context, listen: false).loadUser();
+    });
+    
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CurrencyProvider()),
+        ChangeNotifierProvider(create: (_) => MetricProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+      ],
+      child: MaterialApp(
+        title: 'FundRacer',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          primaryColor: AppColors.primaryBlue,
+          scaffoldBackgroundColor: Colors.white,
+          appBarTheme: AppBarTheme(
+            backgroundColor: Colors.white,
             elevation: 0,
-          ),
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.deepBlue,
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: AppColors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.deepBlue),
-          ),
-        ),
-        // For components that use ColorScheme
-        colorScheme: ColorScheme.light(
-          primary: AppColors.deepBlue,
-          onPrimary: AppColors.white,
-          secondary: AppColors.primaryBlue,
-          onSecondary: AppColors.white,
-          surface: AppColors.white,
-          background: AppColors.lightBlue,
-        ),
-        useMaterial3: true,
-      ),
-      home: const OnboardingScreen(),
-      routes: {
-        '/verify-otp': (context) => OTPVerificationScreen(
-              verificationId: ModalRoute.of(context)!.settings.arguments as String,
+            iconTheme: IconThemeData(color: AppColors.textBlack),
+            titleTextStyle: TextStyle(
+              color: AppColors.textBlack,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
             ),
-      },
+          ),
+          colorScheme: ColorScheme.fromSwatch().copyWith(
+            primary: AppColors.primaryBlue,
+            secondary: AppColors.deepBlue,
+          ),
+        ),
+        home: const SplashScreen(),
+        locale: DevicePreview.locale(context),
+        builder: DevicePreview.appBuilder,
+        routes: {
+          '/verify-otp': (context) => OTPVerificationScreen(
+                verificationId: ModalRoute.of(context)!.settings.arguments as String,
+              ),
+        },
+      ),
     );
   }
 }
