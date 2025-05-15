@@ -1,0 +1,16 @@
+// This file is used to override the sign_in_with_apple plugin's build.gradle
+// It will be applied to the plugin's build.gradle file
+
+afterEvaluate {
+    def signInWithAppleProject = project.subprojects.find { it.name == 'sign_in_with_apple' }
+    if (signInWithAppleProject != null) {
+        signInWithAppleProject.android {
+            compileSdkVersion 35
+            buildToolsVersion "33.0.2"
+            
+            defaultConfig {
+                minSdkVersion 24
+            }
+        }
+    }
+}

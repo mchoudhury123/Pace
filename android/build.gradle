@@ -1,13 +1,18 @@
 buildscript {
-    ext.kotlin_version = '1.9.0'
+    ext.kotlin_version = '1.8.22' // Updated to match the version in settings.gradle
     repositories {
         google()
         mavenCentral()
+        mavenLocal() // Add local Maven repository
+        maven { url 'https://jcenter.bintray.com' } // Fallback repository
+        maven { url 'https://plugins.gradle.org/m2/' } // Gradle plugins repository
+        maven { url 'https://dl.google.com/dl/android/maven2/' } // Google's Maven repository
     }
+
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.1'
+        classpath 'com.android.tools.build:gradle:8.2.1' // Match version in settings.gradle
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath 'com.google.gms:google-services:4.4.1'
+        classpath 'com.google.gms:google-services:4.3.15' // For Firebase
     }
 }
 
@@ -15,15 +20,47 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        mavenLocal() // Add local Maven repository
+        maven { url 'https://jcenter.bintray.com' } // Fallback repository
+        maven { url 'https://plugins.gradle.org/m2/' } // Gradle plugins repository
+        maven { url 'https://dl.google.com/dl/android/maven2/' } // Google's Maven repository
+    }
+
+    // Configure offline mode if network issues persist
+    configurations.all {
+        resolutionStrategy {
+            cacheChangingModulesFor 0, 'seconds'
+            cacheDynamicVersionsFor 0, 'seconds'
+        }
     }
 }
 
-rootProject.buildDir = '../build'
+rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
+
+    // Fix for sign_in_with_apple plugin
+    if (name.contains('sign_in_with_apple')) {
+        beforeEvaluate {
+            project.apply plugin: 'com.android.library'
+            project.apply plugin: 'kotlin-android'
+
+            // Add android configuration
+            project.android {
+                namespace "io.flutter.plugins.signinwithapple"
+                compileSdkVersion 35
+                defaultConfig {
+                    minSdkVersion 24
+                }
+                // Add this to ensure it doesn't look for platform 28
+                buildToolsVersion "33.0.2"
+            }
+        }
+    }
 }
+
 subprojects {
-    project.evaluationDependsOn(':app')
+    project.evaluationDependsOn(":app")
 }
 
 tasks.register("clean", Delete) {

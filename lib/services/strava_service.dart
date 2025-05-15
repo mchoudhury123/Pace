@@ -17,9 +17,9 @@ enum StravaAuthResult {
 }
 
 class StravaService {
-  static const String _clientId = '150848';
-  static const String _clientSecret = '72af103d651584b37d751f899ef80d04f646b6e2';
-  static const String _redirectUrl = 'https://dc67-92-29-210-187.ngrok-free.app/callback';
+  static const String _clientId = String.fromEnvironment('STRAVA_CLIENT_ID');
+  static const String _clientSecret = String.fromEnvironment('STRAVA_CLIENT_SECRET');
+  static const String _redirectUrl = 'fundracer://redirect';
   static const String _authUrl = 'https://www.strava.com/oauth/authorize';
   static const String _tokenUrl = 'https://www.strava.com/oauth/token';
   static const String _scope = 'read,activity:read,activity:read_all,profile:read_all';

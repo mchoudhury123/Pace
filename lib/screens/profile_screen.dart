@@ -3,11 +3,16 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/strava_service.dart';
+import '../services/strava_client_service.dart';
 import '../main.dart';
 import './onboarding_screen.dart';
 import './edit_profile_screen.dart';
 import './settings_screen.dart';
+import './strava_connect_screen.dart';
+import './strava_activities_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
+import '../providers/strava_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -49,12 +54,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _isConnecting = true;
     });
-    
+
     try {
       final authResult = await _stravaService.authenticate();
-      
+
       if (!mounted) return;
-      
+
       // Handle different authentication results
       switch (authResult) {
         case StravaAuthResult.success:
@@ -67,7 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           );
           break;
-          
+
         case StravaAuthResult.cancelled:
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -76,13 +81,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           );
           break;
-          
+
         case StravaAuthResult.networkError:
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Network Error'),
-              content: const Text('Please check your internet connection and try again.'),
+              content: const Text(
+                  'Please check your internet connection and try again.'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -92,13 +98,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           );
           break;
-          
+
         case StravaAuthResult.timeout:
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Connection Timeout'),
-              content: const Text('The connection to Strava timed out. Please try again later.'),
+              content: const Text(
+                  'The connection to Strava timed out. Please try again later.'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -108,14 +115,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           );
           break;
-          
+
         case StravaAuthResult.failed:
         default:
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Connection Failed'),
-              content: const Text('Failed to connect to Strava. Please try again.'),
+              content:
+                  const Text('Failed to connect to Strava. Please try again.'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -133,7 +141,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Error'),
-            content: const Text('Failed to connect to Strava. Please try again.'),
+            content:
+                const Text('Failed to connect to Strava. Please try again.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -218,9 +227,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: () async {
-                      final Uri stravaUrl = Uri.parse('https://www.strava.com/dashboard');
+                      final Uri stravaUrl =
+                          Uri.parse('https://www.strava.com/dashboard');
                       if (await canLaunchUrl(stravaUrl)) {
-                        await launchUrl(stravaUrl, mode: LaunchMode.externalApplication);
+                        await launchUrl(stravaUrl,
+                            mode: LaunchMode.externalApplication);
                       }
                     },
                     child: Text(
@@ -239,7 +250,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     }
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -435,7 +446,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                     Container(
                                       height: 6,
-                                      width: 150, // This would be dynamic based on progress
+                                      width:
+                                          150, // This would be dynamic based on progress
                                       decoration: BoxDecoration(
                                         color: AppColors.primaryBlue,
                                         borderRadius: BorderRadius.circular(3),
@@ -464,7 +476,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 _buildBadge(Colors.orange),
                                 const SizedBox(width: 8),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: Colors.grey.shade100,
                                     borderRadius: BorderRadius.circular(12),
@@ -487,14 +500,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Buttons Section
                 _buildProfileButton(
-                  text: _isStravaConnected ? 'Connected to Strava' : 'Connect to Strava',
+                  text: _isStravaConnected
+                      ? 'Connected to Strava'
+                      : 'Connect to Strava',
                   icon: Icons.directions_run,
                   iconColor: const Color(0xFFFC4C02),
-                  onTap: _isConnecting ? () {} : _connectStrava,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const StravaConnectScreen(),
+                      ),
+                    ).then((_) => _checkStravaConnection());
+                  },
                 ),
+                if (_isStravaConnected)
+                  _buildProfileButton(
+                    text: 'View Strava Activities',
+                    icon: Icons.bar_chart,
+                    iconColor: const Color(0xFFFC4C02),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const StravaActivitiesScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 _buildProfileButton(
                   text: 'Edit Profile',
                   icon: Icons.edit,
@@ -550,7 +586,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 const SizedBox(height: 20),
-                
+
                 // Logout Button
                 SizedBox(
                   width: double.infinity,
@@ -560,7 +596,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       if (mounted) {
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+                          MaterialPageRoute(
+                              builder: (context) => const OnboardingScreen()),
                           (route) => false,
                         );
                       }
@@ -641,11 +678,12 @@ class BarChartPainter extends CustomPainter {
     // Sample data for the bars (normalized to fit the height)
     final data = [0.3, 0.2, 0.3, 0.2, 0.6, 0.8, 0.4];
     final barWidth = size.width / (data.length * 2);
-    
+
     for (var i = 0; i < data.length; i++) {
       final barHeight = size.height * data[i];
-      final left = i * (size.width / data.length) + (size.width / data.length - barWidth) / 2;
-      
+      final left = i * (size.width / data.length) +
+          (size.width / data.length - barWidth) / 2;
+
       canvas.drawRRect(
         RRect.fromRectAndCorners(
           Rect.fromLTWH(left, size.height - barHeight, barWidth, barHeight),
@@ -659,4 +697,4 @@ class BarChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-} 
+}

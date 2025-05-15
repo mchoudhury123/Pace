@@ -4,10 +4,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/otp_verification_screen.dart';
+import 'screens/strava_connect_screen.dart';
+import 'screens/strava_activities_screen.dart';
 import 'package:provider/provider.dart';
 import 'providers/currency_provider.dart';
 import 'providers/metric_provider.dart';
 import 'providers/user_provider.dart';
+import 'providers/strava_provider.dart';
 import 'services/payment_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io' show Platform;
@@ -22,20 +25,21 @@ class AppColors {
   static const Color primaryBlue = Color(0xFF60C0FF); // Lighter blue from image
   static const Color deepBlue = Color(0xFF4A98F7); // Deeper blue from image
   static const Color white = Colors.white;
-  static const Color lightBlue = Color(0xFFDCF1FF); // Very light blue for backgrounds
+  static const Color lightBlue =
+      Color(0xFFDCF1FF); // Very light blue for backgrounds
   static const Color textBlack = Color(0xFF000000);
   static const Color textGrey = Color(0xFF757575);
 }
 
 // Initialize the notification service
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = 
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
 Future<void> initNotifications() async {
   // Settings for Android
   const AndroidInitializationSettings initializationSettingsAndroid =
       AndroidInitializationSettings('@mipmap/ic_launcher');
-  
+
   // Settings for iOS - update to remove the deprecated parameter
   final DarwinInitializationSettings initializationSettingsIOS =
       DarwinInitializationSettings(
@@ -43,13 +47,13 @@ Future<void> initNotifications() async {
     requestBadgePermission: false,
     requestAlertPermission: false,
   );
-  
+
   // Initialize settings
   final InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
     iOS: initializationSettingsIOS,
   );
-  
+
   // Initialize plugin
   await flutterLocalNotificationsPlugin.initialize(
     initializationSettings,
@@ -67,7 +71,8 @@ Future<void> _initializeApp() async {
 
     if (Platform.isIOS) {
       // Configure Firebase Messaging for iOS
-      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      await FirebaseMessaging.instance
+          .setForegroundNotificationPresentationOptions(
         alert: true,
         badge: true,
         sound: true,
@@ -97,7 +102,7 @@ Future<void> _initializeApp() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize the app
   await _initializeApp();
 
@@ -116,22 +121,28 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     print('Building MyApp widget');
-    
+
     // Load saved preferences when app starts
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Load currency and metric preferences
-      await Provider.of<CurrencyProvider>(context, listen: false).loadSavedCurrency();
-      await Provider.of<MetricProvider>(context, listen: false).loadSavedMetric();
-      
+      await Provider.of<CurrencyProvider>(context, listen: false)
+          .loadSavedCurrency();
+      await Provider.of<MetricProvider>(context, listen: false)
+          .loadSavedMetric();
+
       // Load current user data
       await Provider.of<UserProvider>(context, listen: false).loadUser();
+
+      // Initialize Strava provider
+      await Provider.of<StravaProvider>(context, listen: false).initialize();
     });
-    
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CurrencyProvider()),
         ChangeNotifierProvider(create: (_) => MetricProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => StravaProvider()),
       ],
       child: MaterialApp(
         title: 'FundRacer',
@@ -159,8 +170,11 @@ class MyApp extends StatelessWidget {
         builder: DevicePreview.appBuilder,
         routes: {
           '/verify-otp': (context) => OTPVerificationScreen(
-                verificationId: ModalRoute.of(context)!.settings.arguments as String,
+                verificationId:
+                    ModalRoute.of(context)!.settings.arguments as String,
               ),
+          '/strava-connect': (context) => const StravaConnectScreen(),
+          '/strava-activities': (context) => const StravaActivitiesScreen(),
         },
       ),
     );

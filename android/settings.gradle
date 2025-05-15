@@ -1,44 +1,32 @@
 pluginManagement {
+    def flutterSdkPath = {
+        def properties = new Properties()
+        file("local.properties").withInputStream { properties.load(it) }
+        def flutterSdkPath = properties.getProperty("flutter.sdk")
+        assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
+        return flutterSdkPath
+    }()
+
+    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+
     repositories {
+        google()
+        mavenCentral()
         gradlePluginPortal()
-        google()
-        mavenCentral()
+        maven { url 'https://jcenter.bintray.com' } // Fallback repository
+        maven { url 'https://plugins.gradle.org/m2/' } // Gradle plugins repository
+        maven { url 'https://dl.google.com/dl/android/maven2/' } // Google's Maven repository
+        mavenLocal() // Add local Maven repository
     }
 }
 
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
-    repositories {
-        google()
-        mavenCentral()
-        maven {
-            url 'https://storage.googleapis.com/download.flutter.io'
-        }
-    }
+plugins {
+    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+    id "com.android.application" version "8.2.1" apply false
+    // START: FlutterFire Configuration
+    id "com.google.gms.google-services" version "4.3.15" apply false
+    // END: FlutterFire Configuration
+    id "org.jetbrains.kotlin.android" version "1.8.22" apply false
 }
 
-def flutterProjectRoot = rootProject.projectDir.parentFile
-def plugins = new Properties()
-def flutterPropertiesFile = new File(flutterProjectRoot, '.flutter-plugins')
-if (flutterPropertiesFile.exists()) {
-    flutterPropertiesFile.withReader('UTF-8') { reader -> plugins.load(reader) }
-}
-
-plugins.each { name, path ->
-    def pluginDirectory = flutterProjectRoot.toPath().resolve(path).toFile()
-    include ":$name"
-    project(":$name").projectDir = pluginDirectory
-}
-
-def localPropertiesFile = new File(rootProject.projectDir, "local.properties")
-def properties = new Properties()
-
-assert localPropertiesFile.exists()
-localPropertiesFile.withReader("UTF-8") { reader -> properties.load(reader) }
-
-def flutterSdkPath = properties.getProperty("flutter.sdk")
-assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
-
-apply from: "$flutterSdkPath/packages/flutter_tools/gradle/app_plugin_loader.gradle"
-
-include ':app'
+include ":app"

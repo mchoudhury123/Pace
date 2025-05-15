@@ -230,14 +230,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     onPressed: () async {
                       try {
-                        final userCredential = await _authService.signInWithGoogle();
+                        final userCredential =
+                            await _authService.signInWithGoogle();
                         if (userCredential != null) {
                           // Navigate to home screen or handle successful login
                           Navigator.pushReplacementNamed(context, '/home');
                         }
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to sign in with Google: $e')),
+                          SnackBar(
+                              content:
+                                  Text('Failed to sign in with Google: $e')),
                         );
                       }
                     },
@@ -254,34 +257,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  // Apple Sign In button temporarily disabled due to build issues
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
+                      backgroundColor: Colors.grey,
                       foregroundColor: Colors.white,
                       minimumSize: const Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    onPressed: () async {
-                      try {
-                        final userCredential = await _authService.signInWithApple();
-                        if (userCredential != null) {
-                          // Navigate to home screen or handle successful login
-                          Navigator.pushReplacementNamed(context, '/home');
-                        }
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to sign in with Apple: $e')),
-                        );
-                      }
-                    },
+                    onPressed: null, // Disabled
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(Icons.apple, size: 24),
                         const SizedBox(width: 12),
-                        const Text('Sign in with Apple'),
+                        const Text(
+                            'Sign in with Apple (Temporarily Unavailable)'),
                       ],
                     ),
                   ),
@@ -325,4 +318,4 @@ class _LoginScreenState extends State<LoginScreen> {
       body: mainContent,
     );
   }
-} 
+}
