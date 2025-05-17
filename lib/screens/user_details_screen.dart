@@ -4,7 +4,7 @@ import 'home_screen.dart';
 import 'gender_selection_screen.dart';
 import 'onboarding_screen.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_calendar_carousel/flutter_calendar_carousel.dart';
+//import 'package:flutter_calendar_carousel/flutter_calendar_carousel.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -171,52 +171,52 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                               ],
                             ),
                           ),
-                          Expanded(
-                            child: CalendarCarousel(
-                              onDayPressed: (DateTime date, _) {
-                                setDialogState(() {
-                                  tempDate = date;
-                                });
-                                Navigator.of(context).pop(date);
-                              },
-                              thisMonthDayBorderColor: Colors.grey,
-                              weekFormat: false,
-                              height: 340,
-                              selectedDateTime: tempDate,
-                              targetDateTime: tempDate,
-                              customGridViewPhysics: const NeverScrollableScrollPhysics(),
-                              markedDateCustomShapeBorder: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              markedDateCustomTextStyle: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              selectedDayButtonColor: AppColors.primaryBlue,
-                              selectedDayTextStyle: const TextStyle(color: Colors.white),
-                              todayButtonColor: Colors.transparent,
-                              todayTextStyle: TextStyle(color: AppColors.primaryBlue),
-                              minSelectedDate: DateTime(1900),
-                              maxSelectedDate: DateTime.now(),
-                              headerTextStyle: TextStyle(
-                                color: AppColors.deepBlue,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              iconColor: AppColors.primaryBlue,
-                              weekdayTextStyle: TextStyle(
-                                color: AppColors.textGrey,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              daysTextStyle: TextStyle(
-                                color: AppColors.textBlack,
-                              ),
-                              weekendTextStyle: TextStyle(
-                                color: AppColors.primaryBlue.withOpacity(0.7),
-                              ),
-                              showHeaderButton: false,
-                            ),
-                          ),
+                          // Expanded(
+                          //   child: CalendarCarousel(
+                          //     onDayPressed: (DateTime date, _) {
+                          //       setDialogState(() {
+                          //         tempDate = date;
+                          //       });
+                          //       Navigator.of(context).pop(date);
+                          //     },
+                          //     thisMonthDayBorderColor: Colors.grey,
+                          //     weekFormat: false,
+                          //     height: 340,
+                          //     selectedDateTime: tempDate,
+                          //     targetDateTime: tempDate,
+                          //     customGridViewPhysics: const NeverScrollableScrollPhysics(),
+                          //     markedDateCustomShapeBorder: RoundedRectangleBorder(
+                          //       borderRadius: BorderRadius.circular(10),
+                          //     ),
+                          //     markedDateCustomTextStyle: const TextStyle(
+                          //       color: Colors.white,
+                          //       fontWeight: FontWeight.bold,
+                          //     ),
+                          //     selectedDayButtonColor: AppColors.primaryBlue,
+                          //     selectedDayTextStyle: const TextStyle(color: Colors.white),
+                          //     todayButtonColor: Colors.transparent,
+                          //     todayTextStyle: TextStyle(color: AppColors.primaryBlue),
+                          //     minSelectedDate: DateTime(1900),
+                          //     maxSelectedDate: DateTime.now(),
+                          //     headerTextStyle: TextStyle(
+                          //       color: AppColors.deepBlue,
+                          //       fontSize: 20,
+                          //       fontWeight: FontWeight.bold,
+                          //     ),
+                          //     iconColor: AppColors.primaryBlue,
+                          //     weekdayTextStyle: TextStyle(
+                          //       color: AppColors.textGrey,
+                          //       fontWeight: FontWeight.w600,
+                          //     ),
+                          //     daysTextStyle: TextStyle(
+                          //       color: AppColors.textBlack,
+                          //     ),
+                          //     weekendTextStyle: TextStyle(
+                          //       color: AppColors.primaryBlue.withOpacity(0.7),
+                          //     ),
+                          //     showHeaderButton: false,
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),

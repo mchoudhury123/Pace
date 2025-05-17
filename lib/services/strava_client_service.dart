@@ -19,12 +19,14 @@ enum StravaAuthStatus {
 
 class StravaClientService {
   // Strava API credentials
-  static const String _clientId = String.fromEnvironment('STRAVA_CLIENT_ID');
-  static const String _clientSecret =
-      String.fromEnvironment('STRAVA_CLIENT_SECRET');
+  // static const String _clientId = String.fromEnvironment('STRAVA_CLIENT_ID');
+  // static const String _clientSecret = String.fromEnvironment('STRAVA_CLIENT_SECRET');
+  static const String _clientId = '150848';
+  static const String _clientSecret = '72af103d651584b37d751f899ef80d04f646b6e2';
 
   // Authentication status
   StravaAuthStatus _authStatus = StravaAuthStatus.unauthenticated;
+
   StravaAuthStatus get authStatus => _authStatus;
 
   // StravaClient instance
@@ -53,18 +55,22 @@ class StravaClientService {
         callbackUrlScheme: 'fundracer',
       );
       debugPrint('Authentication result: ${result.toJson()}');
-      if (result.expiresAt < DateTime.now().millisecondsSinceEpoch ~/ 1000) {
-        _authStatus = StravaAuthStatus.authenticated;
-        return true;
-      } else {
-        _authStatus = StravaAuthStatus.error;
-        return false;
-      }
+      final prefs = await SharedPreferences.getInstance();
+      final token = await prefs.setString('strava_access_token', result.accessToken);
+      final expiresAt = await prefs.setInt('strava_expires_at', result.expiresAt);
+      _authStatus = StravaAuthStatus.authenticated;
+      return true;
+      // if (result.expiresAt < DateTime.now().millisecondsSinceEpoch ~/ 1000) {
+      //   _authStatus = StravaAuthStatus.authenticated;
+      //   return true;
+      // } else {
+      //   _authStatus = StravaAuthStatus.error;
+      //   return false;
+      // }
     } on PlatformException catch (e) {
       if (e.code == 'CANCELED') {
         debugPrint('User canceled Strava login');
-        _authStatus = StravaAuthStatus
-            .unauthenticated; // Treat as unauthenticated, not an error
+        _authStatus = StravaAuthStatus.unauthenticated; // Treat as unauthenticated, not an error
         return false;
       }
       debugPrint('PlatformException during authentication: $e');
@@ -105,19 +111,15 @@ class StravaClientService {
   }
 
   // Get recent activities
-  Future<List<StravaActivityModel>> getRecentActivities(
-      {int limit = 10}) async {
+  Future<List<StravaActivityModel>> getRecentActivities({int limit = 10}) async {
     try {
-      final activities =
-          await _stravaClient.activities.listLoggedInAthleteActivities(
+      final activities = await _stravaClient.activities.listLoggedInAthleteActivities(
         DateTime.now().subtract(const Duration(days: 30)),
         DateTime.now(),
         1,
         limit,
       );
-      return activities
-          .map((activity) => StravaActivityModel.fromJson(activity.toJson()))
-          .toList();
+      return activities.map((activity) => StravaActivityModel.fromJson(activity.toJson())).toList();
     } catch (e) {
       debugPrint('Error getting recent activities: $e');
       return [];

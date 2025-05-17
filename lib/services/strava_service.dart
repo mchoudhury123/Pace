@@ -8,17 +8,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-enum StravaAuthResult {
-  success,
-  cancelled,
-  failed,
-  networkError,
-  timeout
-}
+enum StravaAuthResult { success, cancelled, failed, networkError, timeout }
 
 class StravaService {
-  static const String _clientId = String.fromEnvironment('STRAVA_CLIENT_ID');
-  static const String _clientSecret = String.fromEnvironment('STRAVA_CLIENT_SECRET');
+  // static const String _clientId = String.fromEnvironment('STRAVA_CLIENT_ID');
+  // static const String _clientSecret = String.fromEnvironment('STRAVA_CLIENT_SECRET');
+  static const String _clientId = '150848';
+  static const String _clientSecret = '72af103d651584b37d751f899ef80d04f646b6e2';
   static const String _redirectUrl = 'fundracer://redirect';
   static const String _authUrl = 'https://www.strava.com/oauth/authorize';
   static const String _tokenUrl = 'https://www.strava.com/oauth/token';
@@ -31,14 +27,15 @@ class StravaService {
   Future<bool> get isAuthenticated async {
     final token = _prefs.getString('strava_access_token');
     final expiresAt = _prefs.getInt('strava_expires_at');
-    if (token == null || expiresAt == null) return false;
-    return DateTime.now().millisecondsSinceEpoch < expiresAt;
+    return (token != null && expiresAt != null);
+    // if (token == null || expiresAt == null) return false;
+    //return DateTime.now().millisecondsSinceEpoch < expiresAt;
   }
 
   Future<StravaAuthResult> authenticate() async {
     try {
       final state = DateTime.now().millisecondsSinceEpoch.toString();
-      
+
       final authorizeUrl = Uri.parse(_authUrl).replace(queryParameters: {
         'client_id': _clientId,
         'redirect_uri': _redirectUrl,
@@ -115,15 +112,14 @@ class StravaService {
       await _prefs.setString('strava_access_token', tokenData['access_token']);
       await _prefs.setInt('strava_expires_at', tokenData['expires_at'] * 1000);
       await _prefs.setString('strava_refresh_token', tokenData['refresh_token']);
-      
+
       debugPrint('Authentication completed successfully');
       return StravaAuthResult.success;
     } on TimeoutException {
       debugPrint('Strava authentication timed out');
       return StravaAuthResult.timeout;
     } catch (e) {
-      if (e.toString().contains('Connection failed') || 
-          e.toString().contains('SocketException')) {
+      if (e.toString().contains('Connection failed') || e.toString().contains('SocketException')) {
         debugPrint('Network error during Strava authentication: $e');
         return StravaAuthResult.networkError;
       }
@@ -179,14 +175,9 @@ class StravaService {
       if (token == null) throw Exception('Not authenticated with Strava');
 
       final response = await http.get(
-        Uri.parse('https://www.strava.com/api/v3/athlete/activities')
-            .replace(queryParameters: {
+        Uri.parse('https://www.strava.com/api/v3/athlete/activities').replace(queryParameters: {
           'per_page': '10',
-          'after': (DateTime.now()
-                      .subtract(const Duration(days: 30))
-                      .millisecondsSinceEpoch ~/
-                  1000)
-              .toString(),
+          'after': (DateTime.now().subtract(const Duration(days: 30)).millisecondsSinceEpoch ~/ 1000).toString(),
         }),
         headers: {'Authorization': 'Bearer $token'},
       );
@@ -244,4 +235,4 @@ class StravaService {
     await _prefs.remove('strava_expires_at');
     await _prefs.remove('strava_refresh_token');
   }
-} 
+}

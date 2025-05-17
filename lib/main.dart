@@ -25,24 +25,20 @@ class AppColors {
   static const Color primaryBlue = Color(0xFF60C0FF); // Lighter blue from image
   static const Color deepBlue = Color(0xFF4A98F7); // Deeper blue from image
   static const Color white = Colors.white;
-  static const Color lightBlue =
-      Color(0xFFDCF1FF); // Very light blue for backgrounds
+  static const Color lightBlue = Color(0xFFDCF1FF); // Very light blue for backgrounds
   static const Color textBlack = Color(0xFF000000);
   static const Color textGrey = Color(0xFF757575);
 }
 
 // Initialize the notification service
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 Future<void> initNotifications() async {
   // Settings for Android
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
+  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
 
   // Settings for iOS - update to remove the deprecated parameter
-  final DarwinInitializationSettings initializationSettingsIOS =
-      DarwinInitializationSettings(
+  final DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
     requestSoundPermission: false,
     requestBadgePermission: false,
     requestAlertPermission: false,
@@ -65,14 +61,11 @@ Future<void> initNotifications() async {
 
 Future<void> _initializeApp() async {
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    await Firebase.initializeApp();
 
     if (Platform.isIOS) {
       // Configure Firebase Messaging for iOS
-      await FirebaseMessaging.instance
-          .setForegroundNotificationPresentationOptions(
+      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
         alert: true,
         badge: true,
         sound: true,
@@ -109,7 +102,15 @@ void main() async {
   runApp(
     DevicePreview(
       enabled: !kReleaseMode && kIsWeb,
-      builder: (context) => const MyApp(),
+      builder: (context) => MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => CurrencyProvider()),
+          ChangeNotifierProvider(create: (_) => MetricProvider()),
+          ChangeNotifierProvider(create: (_) => UserProvider()),
+          ChangeNotifierProvider(create: (_) => StravaProvider()),
+        ],
+        child: MyApp(),
+      ),
     ),
   );
 }
@@ -125,10 +126,8 @@ class MyApp extends StatelessWidget {
     // Load saved preferences when app starts
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Load currency and metric preferences
-      await Provider.of<CurrencyProvider>(context, listen: false)
-          .loadSavedCurrency();
-      await Provider.of<MetricProvider>(context, listen: false)
-          .loadSavedMetric();
+      await Provider.of<CurrencyProvider>(context, listen: false).loadSavedCurrency();
+      await Provider.of<MetricProvider>(context, listen: false).loadSavedMetric();
 
       // Load current user data
       await Provider.of<UserProvider>(context, listen: false).loadUser();
@@ -137,46 +136,37 @@ class MyApp extends StatelessWidget {
       await Provider.of<StravaProvider>(context, listen: false).initialize();
     });
 
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => CurrencyProvider()),
-        ChangeNotifierProvider(create: (_) => MetricProvider()),
-        ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => StravaProvider()),
-      ],
-      child: MaterialApp(
-        title: 'FundRacer',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          primaryColor: AppColors.primaryBlue,
-          scaffoldBackgroundColor: Colors.white,
-          appBarTheme: AppBarTheme(
-            backgroundColor: Colors.white,
-            elevation: 0,
-            iconTheme: IconThemeData(color: AppColors.textBlack),
-            titleTextStyle: TextStyle(
-              color: AppColors.textBlack,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          colorScheme: ColorScheme.fromSwatch().copyWith(
-            primary: AppColors.primaryBlue,
-            secondary: AppColors.deepBlue,
+    return MaterialApp(
+      title: 'FundRacer',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primaryColor: AppColors.primaryBlue,
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          iconTheme: IconThemeData(color: AppColors.textBlack),
+          titleTextStyle: TextStyle(
+            color: AppColors.textBlack,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        home: const SplashScreen(),
-        locale: DevicePreview.locale(context),
-        builder: DevicePreview.appBuilder,
-        routes: {
-          '/verify-otp': (context) => OTPVerificationScreen(
-                verificationId:
-                    ModalRoute.of(context)!.settings.arguments as String,
-              ),
-          '/strava-connect': (context) => const StravaConnectScreen(),
-          '/strava-activities': (context) => const StravaActivitiesScreen(),
-        },
+        colorScheme: ColorScheme.fromSwatch().copyWith(
+          primary: AppColors.primaryBlue,
+          secondary: AppColors.deepBlue,
+        ),
       ),
+      home: const SplashScreen(),
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
+      routes: {
+        '/verify-otp': (context) => OTPVerificationScreen(
+              verificationId: ModalRoute.of(context)!.settings.arguments as String,
+            ),
+        '/strava-connect': (context) => const StravaConnectScreen(),
+        '/strava-activities': (context) => const StravaActivitiesScreen(),
+      },
     );
   }
 }

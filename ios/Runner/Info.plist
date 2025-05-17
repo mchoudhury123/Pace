@@ -105,6 +105,16 @@
 				<string>com.googleusercontent.apps.877846903380-llb6cqocdnncjb7n72apk8r7muf7ebpr</string>
 			</array>
 		</dict>
+		<dict>
+        	<key>CFBundleTypeRole</key>
+        	<string>Editor</string>
+        	<key>CFBundleURLName</key>
+        	<string>stravaflutter</string>
+        	<key>CFBundleURLSchemes</key>
+        	<array>
+        	   <string>stravaflutter</string>
+        	</array>
+        </dict>
 	</array>
 	<key>GIDClientID</key>
 	<string>877846903380-llb6cqocdnncjb7n72apk8r7muf7ebpr.apps.googleusercontent.com</string>
